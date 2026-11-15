@@ -46,13 +46,33 @@ export const Callout = Node.create({
   content: "block+",
   defining: true,
   addAttributes() {
-    return { emoji: { default: "💡" } };
+    return {
+      emoji: { default: "💡" },
+      transparent: { default: false },
+    };
   },
   parseHTML() {
-    return [{ tag: "div[data-callout]", getAttrs: (el) => ({ emoji: (el as HTMLElement).dataset.emoji ?? "💡" }) }];
+    return [
+      {
+        tag: "div[data-callout]",
+        getAttrs: (el) => ({
+          emoji: (el as HTMLElement).dataset.emoji ?? "💡",
+          transparent: (el as HTMLElement).dataset.transparent === "true",
+        }),
+      },
+    ];
   },
   renderHTML({ node, HTMLAttributes }) {
-    return ["div", mergeAttributes(HTMLAttributes, { "data-callout": "", "data-emoji": node.attrs.emoji, class: "callout" }), 0];
+    return [
+      "div",
+      mergeAttributes(HTMLAttributes, {
+        "data-callout": "",
+        "data-emoji": node.attrs.emoji,
+        "data-transparent": node.attrs.transparent ? "true" : undefined,
+        class: "callout",
+      }),
+      0,
+    ];
   },
   addCommands() {
     return {
@@ -85,11 +105,7 @@ export const FileAttachment = Node.create({
     const { url, name, size } = node.attrs;
     // Files of this server or web addresses only: what other people wrote in the page never becomes a link that runs code.
     const href = typeof url === "string" && /^(\/api\/(attachments|public)\/|https?:\/\/)/i.test(url) ? `${url}?download` : undefined;
-    return [
-      "a",
-      { "data-file": "", class: "file-attachment", href, target: "_blank", rel: "noopener" },
-      `📎 ${name} · ${formatSize(size)}`,
-    ];
+    return ["a", { "data-file": "", class: "file-attachment", href, target: "_blank", rel: "noopener" }, `📎 ${name} · ${formatSize(size)}`];
   },
   addCommands() {
     return {
