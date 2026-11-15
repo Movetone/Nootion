@@ -3,6 +3,7 @@ import { TextSelection } from "@tiptap/pm/state";
 import { Details } from "@tiptap/extension-details";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { PageLinkView } from "./PageLinkView";
+import { CalloutView } from "./CalloutView";
 import { DatabaseBlockView } from "../database/DatabaseBlockView";
 import { CalendarBlockView } from "../database/CalendarBlockView";
 import { DateMentionView } from "./DateMentionView";
@@ -48,7 +49,6 @@ export const Callout = Node.create({
   addAttributes() {
     return {
       emoji: { default: "💡" },
-      transparent: { default: false },
     };
   },
   parseHTML() {
@@ -57,7 +57,6 @@ export const Callout = Node.create({
         tag: "div[data-callout]",
         getAttrs: (el) => ({
           emoji: (el as HTMLElement).dataset.emoji ?? "💡",
-          transparent: (el as HTMLElement).dataset.transparent === "true",
         }),
       },
     ];
@@ -68,11 +67,13 @@ export const Callout = Node.create({
       mergeAttributes(HTMLAttributes, {
         "data-callout": "",
         "data-emoji": node.attrs.emoji,
-        "data-transparent": node.attrs.transparent ? "true" : undefined,
         class: "callout",
       }),
       0,
     ];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(CalloutView);
   },
   addCommands() {
     return {
