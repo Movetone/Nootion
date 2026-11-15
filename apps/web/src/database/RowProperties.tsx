@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { atLeast, type CellValue, type DatabaseProperty, type DatabaseRow, type PageRole, type RelatedRow, type SelectOption } from "@nootion/shared";
 import { api } from "../lib/api";
@@ -5,7 +6,9 @@ import { sendOrQueue, useOfflineQueue, withQueuedRow } from "../lib/offline";
 import { Cell } from "./Cell";
 import { PropertyIcon } from "./icons";
 import { newOption } from "./OptionPicker";
-import { t } from "@nootion/shared";
+import { Popover } from "./Popover";
+import { AddPropertyForm } from "./AddPropertyForm";
+import { t, type PropertyType } from "@nootion/shared";
 
 interface RowData {
   properties: DatabaseProperty[];
@@ -19,6 +22,7 @@ interface RowData {
 /** Property list shown above the content of a database row opened as a page. */
 export function RowProperties({ databaseId, rowId }: { databaseId: string; rowId: string }) {
   const qc = useQueryClient();
+  const [adding, setAdding] = useState<HTMLElement | null>(null);
   const key = ["database-row", rowId] as const;
   const { pending } = useOfflineQueue();
   const q = useQuery({
@@ -38,6 +42,11 @@ export function RowProperties({ databaseId, rowId }: { databaseId: string; rowId
     // Relations and rollups can show this row in other databases too.
     onSettled: () => qc.invalidateQueries({ queryKey: ["database"] }),
   });
+
+  const addProperty = async (name: string, type: PropertyType) => {
+    await api<{ property: DatabaseProperty }>(`/databases/${databaseId}/properties`, { method: "POST", body: { name, type, config: {} } });
+    await Promise.all([qc.invalidateQueries({ queryKey: key }), qc.invalidateQueries({ queryKey: ["database", databaseId] })]);
+  };
 
   if (!q.data) return null;
   const { properties, row, role, people, related, rollupTargets } = q.data;
@@ -77,6 +86,18 @@ export function RowProperties({ databaseId, rowId }: { databaseId: string; rowId
             </div>
           </div>
         ))}
+      {editable && (
+        <>
+          <button type="button" className="mt-2 rounded px-2 py-1 text-sm text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-200" onClick={(e) => setAdding(e.currentTarget)}>
+            + {t("table.addProperty")}
+          </button>
+          {adding && (
+            <Popover anchor={adding} onClose={() => setAdding(null)} width={240}>
+              <AddPropertyForm existingNames={properties.map((p) => p.name)} onCreate={addProperty} onClose={() => setAdding(null)} />
+            </Popover>
+          )}
+        </>
+      )}
     </div>
   );
 }
