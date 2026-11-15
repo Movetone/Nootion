@@ -14,6 +14,20 @@ let eveId: string;
 
 const ANCHOR = { start: "AQIDBA==", end: "BQYHCA==" };
 
+async function postMultipartComment(c: Client, url: string, payload: object, files: { name: string; type: string; body: string }[]) {
+  const boundary = "----nootion-comment";
+  const parts: Buffer[] = [Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="payload"\r\n\r\n${JSON.stringify(payload)}\r\n`)];
+  for (const file of files) {
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="${file.name}"\r\nContent-Type: ${file.type}\r\n\r\n${file.body}\r\n`,
+      ),
+    );
+  }
+  parts.push(Buffer.from(`--${boundary}--\r\n`));
+  return c.request("POST", url, Buffer.concat(parts), { "content-type": `multipart/form-data; boundary=${boundary}` });
+}
+
 beforeEach(async () => {
   sent = [];
   app = await makeApp(undefined, {}, { pushSender: async (sub, payload) => void sent.push({ endpoint: sub.endpoint, payload }) });
@@ -128,6 +142,22 @@ describe("comments", () => {
     expect((await alice.get("/api/comments/notifications")).json().notifications).toEqual([]);
   });
 
+  it("attaches multiple files to comments, exposes them to viewers, and deletes them with the comment", async () => {
+    const res = await postMultipartComment(boris, `/api/pages/${page}/comments/multipart`, { body: "Files" }, [
+      { name: "note.txt", type: "text/plain", body: "hello" },
+      { name: "image.png", type: "image/png", body: "png-bytes" },
+    ]);
+    expect(res.statusCode).toBe(200);
+    const thread = res.json().thread;
+    const comment = thread.comments[0];
+    expect(comment.attachments).toHaveLength(2);
+    expect(comment.attachments.map((a: { filename: string }) => a.filename)).toEqual(["note.txt", "image.png"]);
+
+    const file = comment.attachments[0];
+    expect((await eve.get(file.url)).statusCode).toBe(200);
+    expect((await boris.delete(`/api/comments/${comment.id}`)).statusCode).toBe(200);
+    expect((await boris.get(file.url)).statusCode).toBe(404);
+  });
   it("keeps comments off databases", async () => {
     const db = (await boris.post("/api/databases", { workspaceId: ws, parentId: null, title: "Dépenses" })).json().database;
     expect((await boris.post(`/api/pages/${db.id}/comments`, { body: "?" })).statusCode).toBe(400);

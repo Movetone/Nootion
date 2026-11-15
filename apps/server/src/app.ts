@@ -200,7 +200,7 @@ export async function buildApp(opts: { db: Db; config: Config; logger?: boolean;
 
   await app.register(cookie, { secret: opts.config.appSecret });
   await app.register(rateLimit, { global: false });
-  await app.register(multipart, { limits: { fileSize: opts.config.maxUploadMb * 1024 * 1024, files: 1 } });
+  await app.register(multipart, { limits: { fileSize: opts.config.maxUploadMb * 1024 * 1024 } });
   await app.register(websocket, { options: { maxPayload: 10 * 1024 * 1024 } });
 
   const https = opts.config.appUrl.startsWith("https://");

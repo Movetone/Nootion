@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+/** A file attached to one comment. */
+export interface CommentAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+}
+
 /**
  * Comments on pages. A thread is about a passage of the page (its anchor, two Yjs relative positions that follow the
  * text as it is edited) or about the whole page. A comment's body is plain text where `<@userId>` mentions someone.
@@ -12,6 +21,7 @@ export interface CommentInfo {
   body: string;
   createdAt: string;
   editedAt: string | null;
+  attachments: CommentAttachment[];
 }
 
 export interface CommentThread {

@@ -1,5 +1,7 @@
+import fs from "node:fs";
+import { pipeline } from "node:stream/promises";
 import { randomUUID } from "node:crypto";
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -16,7 +18,8 @@ import {
   type CommentThread,
   type Locale,
 } from "@nootion/shared";
-import { commentNotifications, comments, commentThreads, pageMentions, pages, users } from "../db/schema.js";
+import { commentAttachments, commentNotifications, comments, commentThreads, attachments, pageMentions, pages, users } from "../db/schema.js";
+import { attachmentPath, uploadsDir } from "../attachments.js";
 import { listPageMentions } from "../mentions.js";
 import { HttpError, notFound, parseBody, requireUser } from "../http.js";
 import { getPageRole, requirePageRole } from "../permissions.js";
@@ -43,6 +46,74 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
     return thread;
   }
 
+  async function multipartComment(req: FastifyRequest, pageId: string, userId: string, threadId: string | null) {
+    const maxBytes = app.config.maxUploadMb * 1024 * 1024;
+    const temp: { id: string; filename: string; mimeType: string; size: number; tmp: string; dest: string }[] = [];
+    let payload: Record<string, unknown> | null = null;
+    try {
+      for await (const part of req.parts({ limits: { fileSize: maxBytes } })) {
+        if (part.type === "field") {
+          if (part.fieldname === "payload") payload = JSON.parse(String(part.value)) as Record<string, unknown>;
+          continue;
+        }
+        const id = randomUUID();
+        fs.mkdirSync(uploadsDir(app.config.dataDir), { recursive: true });
+        const dest = attachmentPath(app.config.dataDir, id);
+        const tmp = `${dest}.part`;
+        await pipeline(part.file, fs.createWriteStream(tmp));
+        if (part.file.truncated) throw new HttpError(413, "too_large", t("error.fileTooLarge", { max: app.config.maxUploadMb }));
+        const size = fs.statSync(tmp).size;
+        temp.push({
+          id,
+          filename: (part.filename || "file").replace(/[\\/\r\n]/g, "_").slice(0, 255),
+          mimeType: part.mimetype || "application/octet-stream",
+          size,
+          tmp,
+          dest,
+        });
+      }
+      if (!payload) throw new HttpError(400, "bad_comment", "Invalid comment");
+      const input = threadId ? { body: String(payload.body ?? "") } : createThreadInput.parse(payload);
+      if (threadId) {
+        const thread = threadOf(threadId);
+        if (thread.pageId !== pageId) throw notFound();
+      }
+      const thread = threadId
+        ? threadOf(threadId)
+        : (() => {
+            const id = randomUUID();
+            const anchor = input as z.infer<typeof createThreadInput>;
+            db.insert(commentThreads)
+              .values({
+                id,
+                pageId,
+                anchorStart: anchor.anchor?.start ?? null,
+                anchorEnd: anchor.anchor?.end ?? null,
+                quote: anchor.anchor ? anchor.quote : "",
+              })
+              .run();
+            return threadOf(id);
+          })();
+      if (thread.resolvedAt) db.update(commentThreads).set({ resolvedAt: null, resolvedBy: null }).where(eq(commentThreads.id, thread.id)).run();
+      const commentId = await addComment(thread.id, userId, input.body);
+      db.transaction((tx) => {
+        for (const [position, file] of temp.entries()) {
+          fs.renameSync(file.tmp, file.dest);
+          tx.insert(attachments).values({ id: file.id, pageId, filename: file.filename, mimeType: file.mimeType, size: file.size, createdBy: userId }).run();
+          tx.insert(commentAttachments).values({ commentId, attachmentId: file.id, position }).run();
+        }
+      });
+      app.extractor.wake();
+      return { thread: listThreads(db, pageId, thread.id)[0] };
+    } catch (error) {
+      for (const file of temp) {
+        fs.rmSync(file.tmp, { force: true });
+        fs.rmSync(file.dest, { force: true });
+      }
+      throw error;
+    }
+  }
+
   app.get<{ Params: { pageId: string } }>("/pages/:pageId/comments", async (req) => {
     const user = requireUser(req);
     pageAccess(user.id, req.params.pageId, false);
@@ -59,6 +130,19 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
       .run();
     await addComment(id, user.id, input.body);
     return { thread: listThreads(db, page.id, id)[0] };
+  });
+
+  app.post<{ Params: { pageId: string } }>("/pages/:pageId/comments/multipart", async (req) => {
+    const user = requireUser(req);
+    pageAccess(user.id, req.params.pageId, true);
+    return multipartComment(req, req.params.pageId, user.id, null);
+  });
+
+  app.post<{ Params: { threadId: string } }>("/comments/threads/:threadId/replies/multipart", async (req) => {
+    const user = requireUser(req);
+    const thread = threadOf(req.params.threadId);
+    pageAccess(user.id, thread.pageId, true);
+    return multipartComment(req, thread.pageId, user.id, thread.id);
   });
 
   app.post<{ Params: { threadId: string } }>("/comments/threads/:threadId/replies", async (req) => {
@@ -94,6 +178,24 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
     return { comment, thread };
   }
 
+  function removeCommentAttachments(commentId: string) {
+    const files = db
+      .select({ id: attachments.id })
+      .from(commentAttachments)
+      .innerJoin(attachments, eq(attachments.id, commentAttachments.attachmentId))
+      .where(eq(commentAttachments.commentId, commentId))
+      .all();
+    db.delete(attachments)
+      .where(
+        inArray(
+          attachments.id,
+          files.map((file) => file.id),
+        ),
+      )
+      .run();
+    for (const file of files) fs.rmSync(attachmentPath(app.config.dataDir, file.id), { force: true });
+  }
+
   app.patch<{ Params: { id: string } }>("/comments/:id", async (req) => {
     const user = requireUser(req);
     const { comment, thread } = ownComment(user.id, req.params.id);
@@ -108,6 +210,7 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: { id: string } }>("/comments/:id", async (req) => {
     const user = requireUser(req);
     const { comment, thread } = ownComment(user.id, req.params.id);
+    removeCommentAttachments(comment.id);
     db.delete(comments).where(eq(comments.id, comment.id)).run();
     const left = db.select({ id: comments.id }).from(comments).where(eq(comments.threadId, thread.id)).get();
     if (!left) db.delete(commentThreads).where(eq(commentThreads.id, thread.id)).run();
@@ -140,6 +243,7 @@ export const commentRoutes: FastifyPluginAsync = async (app) => {
     const id = randomUUID();
     db.insert(comments).values({ id, threadId, authorId, body }).run();
     await notify(id, authorId, body, threadId, { reply, skip: [] });
+    return id;
   }
 
   /**
@@ -219,6 +323,27 @@ export function listThreads(db: Db, pageId: string, onlyThread?: string): Commen
     )
     .orderBy(asc(comments.createdAt))
     .all();
+  const attachmentRows = list.length
+    ? db
+        .select({
+          commentId: commentAttachments.commentId,
+          id: attachments.id,
+          filename: attachments.filename,
+          mimeType: attachments.mimeType,
+          size: attachments.size,
+          position: commentAttachments.position,
+        })
+        .from(commentAttachments)
+        .innerJoin(attachments, eq(attachments.id, commentAttachments.attachmentId))
+        .where(
+          inArray(
+            commentAttachments.commentId,
+            list.map((comment) => comment.id),
+          ),
+        )
+        .orderBy(asc(commentAttachments.position))
+        .all()
+    : [];
   const names = userNames(db);
   return threads
     .map((th) => ({
@@ -240,6 +365,9 @@ export function listThreads(db: Db, pageId: string, onlyThread?: string): Commen
             body: c.body,
             createdAt: c.createdAt.toISOString(),
             editedAt: c.editedAt?.toISOString() ?? null,
+            attachments: attachmentRows
+              .filter((file) => file.commentId === c.id)
+              .map((file) => ({ id: file.id, filename: file.filename, mimeType: file.mimeType, size: file.size, url: `/api/attachments/${file.id}` })),
           };
         }),
     }))
