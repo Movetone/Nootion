@@ -54,14 +54,15 @@ export function apiIfChanged<T>(path: string, etag: string | null | undefined) {
 async function request<T>(path: string, init: { method?: string; body?: unknown; etag?: string | null }): Promise<{ data: T | null; etag: string | null }> {
   let res: Response;
   const headers: Record<string, string> = {};
-  if (init.body !== undefined) headers["content-type"] = "application/json";
+  const formData = typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (init.body !== undefined && !formData) headers["content-type"] = "application/json";
   if (init.etag) headers["if-none-match"] = init.etag;
   try {
     res = await fetch(`/api${path}`, {
       method: init.method ?? "GET",
       credentials: "same-origin",
       headers,
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+      body: init.body !== undefined ? (formData ? (init.body as FormData) : JSON.stringify(init.body)) : undefined,
     });
   } catch {
     setReachable(false);

@@ -49,19 +49,16 @@ export const users = sqliteTable(
 );
 
 /** A password checked, waiting for the second factor: the cookie that finishes the sign-in. */
-export const loginChallenges = sqliteTable(
-  "login_challenges",
-  {
-    tokenHash: text("token_hash").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    // Wrong codes typed for it: past a few, the password has to be typed again.
-    attempts: integer("attempts").notNull().default(0),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-    createdAt: createdAt(),
-  },
-);
+export const loginChallenges = sqliteTable("login_challenges", {
+  tokenHash: text("token_hash").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Wrong codes typed for it: past a few, the password has to be typed again.
+  attempts: integer("attempts").notNull().default(0),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: createdAt(),
+});
 
 export const sessions = sqliteTable(
   "sessions",
@@ -568,6 +565,22 @@ export const comments = sqliteTable(
     syncClock: integer("sync_clock").notNull().default(0),
   },
   (t) => [index("comments_thread_idx").on(t.threadId)],
+);
+
+/** Files attached to a specific comment; deleting the comment deletes the link and file row. */
+export const commentAttachments = sqliteTable(
+  "comment_attachments",
+  {
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    attachmentId: text("attachment_id")
+      .primaryKey()
+      .references(() => attachments.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("comment_attachments_comment_idx").on(t.commentId)],
 );
 
 /** Someone was mentioned in a comment, or a thread they take part in got a reply. */

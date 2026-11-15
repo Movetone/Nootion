@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Check, MessageSquare, MoreHorizontal, RotateCcw, X } from "lucide-react";
-import { intlLocale, t, type CommentInfo, type CommentThread, type UserDirectoryEntry } from "@nootion/shared";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { Check, Download, Image as ImageIcon, Maximize2, MessageSquare, MoreHorizontal, Paperclip, RotateCcw, X } from "lucide-react";
+import { intlLocale, t, type CommentAttachment, type CommentInfo, type CommentThread, type UserDirectoryEntry } from "@nootion/shared";
 import { api } from "../lib/api";
 import { useUserDirectory } from "../lib/queries";
 import { useSession } from "../lib/session";
@@ -13,6 +13,14 @@ import { useComments, useThreadUpdate } from "./queries";
 export interface DraftAnchor {
   anchor: { start: string; end: string };
   quote: string;
+}
+
+function submitComment(path: string, payload: Record<string, unknown>, files: File[]) {
+  if (!files.length) return api<{ thread: CommentThread }>(path, { method: "POST", body: payload });
+  const form = new FormData();
+  form.append("payload", JSON.stringify(payload));
+  for (const file of files) form.append("files", file, file.name);
+  return api<{ thread: CommentThread }>(path + "/multipart", { method: "POST", body: form });
 }
 
 /**
@@ -73,8 +81,8 @@ export function CommentsPanel({
               autoFocus
               placeholder={t("comments.addPlaceholder")}
               onCancel={onDraftDone}
-              onSubmit={async (body) => {
-                const thread = await update(() => api<{ thread: CommentThread }>(`/pages/${pageId}/comments`, { method: "POST", body: { body, ...draft } }));
+              onSubmit={async (body, files) => {
+                const thread = await update(() => submitComment(`/pages/${pageId}/comments`, { body, ...draft }, files ?? []));
                 onDraftDone();
                 if (thread) onActive(thread.id);
               }}
@@ -90,8 +98,8 @@ export function CommentsPanel({
         <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
           <Composer
             placeholder={t("comments.pagePlaceholder")}
-            onSubmit={async (body) => {
-              const thread = await update(() => api<{ thread: CommentThread }>(`/pages/${pageId}/comments`, { method: "POST", body: { body } }));
+            onSubmit={async (body, files) => {
+              const thread = await update(() => submitComment(`/pages/${pageId}/comments`, { body }, files ?? []));
               if (thread) onActive(thread.id);
             }}
           />
@@ -158,7 +166,7 @@ function Thread({
           <Composer
             autoFocus={false}
             placeholder={t("comments.replyPlaceholder")}
-            onSubmit={(body) => update(() => api<{ thread: CommentThread }>(`/comments/threads/${thread.id}/replies`, { method: "POST", body: { body } }))}
+            onSubmit={(body, files) => update(() => submitComment(`/comments/threads/${thread.id}/replies`, { body }, files ?? []))}
           />
         </div>
       )}
@@ -219,6 +227,7 @@ function Comment({ comment, pageId, threadId, canComment }: { comment: CommentIn
           <CommentText body={comment.body} users={users.data ?? []} />
         </p>
       )}
+      <AttachmentList attachments={comment.attachments} />
       {menu && (
         <Popover anchor={menu} onClose={() => setMenu(null)} width={180}>
           <button
@@ -243,6 +252,75 @@ function Comment({ comment, pageId, threadId, canComment }: { comment: CommentIn
         </Popover>
       )}
     </div>
+  );
+}
+
+function AttachmentList({ attachments }: { attachments: CommentAttachment[] }) {
+  const [fullScreen, setFullScreen] = useState<CommentAttachment | null>(null);
+  if (!attachments.length) return null;
+  return (
+    <>
+      <div className="mt-2 grid grid-cols-2 gap-2 pl-7">
+        {attachments.map((attachment) =>
+          attachment.mimeType.startsWith("image/") ? (
+            <button
+              key={attachment.id}
+              type="button"
+              className="group relative overflow-hidden rounded border border-neutral-200 dark:border-neutral-700"
+              onClick={() => setFullScreen(attachment)}
+              title="Open full screen"
+            >
+              <img src={attachment.url} alt={attachment.filename} className="h-24 w-full object-cover" />
+              <span className="absolute right-1 top-1 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <Maximize2 size={13} />
+              </span>
+              <span className="block truncate px-1 py-0.5 text-left text-xs text-neutral-500">{attachment.filename}</span>
+            </button>
+          ) : (
+            <div key={attachment.id} className="flex min-w-0 items-center gap-2 rounded border border-neutral-200 p-2 dark:border-neutral-700">
+              <ImageIcon size={18} className="shrink-0 text-neutral-400" />
+              <span className="min-w-0 flex-1 truncate text-xs" title={attachment.filename}>
+                {attachment.filename}
+              </span>
+              <a
+                href={`${attachment.url}?download=1`}
+                download={attachment.filename}
+                className="shrink-0 rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                title="Download"
+              >
+                <Download size={14} />
+              </a>
+            </div>
+          ),
+        )}
+      </div>
+      {fullScreen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-6"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setFullScreen(null)}
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded bg-black/60 p-2 text-white"
+            onClick={() => setFullScreen(null)}
+            aria-label={t("common.close")}
+          >
+            <X size={20} />
+          </button>
+          <img src={fullScreen.url} alt={fullScreen.filename} className="max-h-full max-w-full object-contain" onClick={(event) => event.stopPropagation()} />
+          <a
+            href={`${fullScreen.url}?download=1`}
+            download={fullScreen.filename}
+            className="absolute bottom-4 right-4 flex items-center gap-2 rounded bg-white px-3 py-2 text-sm text-neutral-900"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Download size={16} /> Download
+          </a>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -275,7 +353,7 @@ function Composer({
   submitLabel = t("comments.send"),
   autoFocus,
 }: {
-  onSubmit: (body: string) => Promise<unknown>;
+  onSubmit: (body: string, files?: File[]) => Promise<unknown>;
   onCancel?: () => void;
   placeholder?: string;
   initial?: string;
@@ -288,9 +366,11 @@ function Composer({
   const [mentioned, setMentioned] = useState<Map<string, string>>(() => new Map());
   const [text, setText] = useState(() => initial.replace(/<@([A-Za-z0-9-]+)>/g, (_, id: string) => `@${people.find((u) => u.id === id)?.name ?? "?"}`));
   const [busy, setBusy] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const [query, setQuery] = useState<{ at: number; text: string } | null>(null);
   const [selected, setSelected] = useState(0);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   // Where the caret goes once a picked name is in the text, before anything else is typed.
   const pendingCaret = useRef<number | null>(null);
   useLayoutEffect(() => {
@@ -334,6 +414,15 @@ function Composer({
     pendingCaret.current = query.at + person.name.length + 2;
   }
 
+  function addFiles(next: File[]) {
+    if (next.length) setFiles((current) => [...current, ...next]);
+  }
+
+  function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pasted = [...event.clipboardData.files];
+    if (pasted.length) addFiles(pasted);
+  }
+
   async function submit() {
     let body = text.trim();
     if (!body || busy) return;
@@ -341,8 +430,9 @@ function Composer({
     for (const [name, id] of [...mentioned].sort((a, b) => b[0].length - a[0].length)) body = body.split(`@${name}`).join(`<@${id}>`);
     setBusy(true);
     try {
-      await onSubmit(body);
+      await onSubmit(body, files);
       setText("");
+      setFiles([]);
       setMentioned(new Map());
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
@@ -377,7 +467,15 @@ function Composer({
   }
 
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="relative"
+      onClick={(e) => e.stopPropagation()}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        addFiles([...event.dataTransfer.files]);
+      }}
+    >
       <textarea
         ref={ref}
         rows={Math.min(6, Math.max(1, text.split("\n").length))}
@@ -385,6 +483,7 @@ function Composer({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value, e.target.selectionStart)}
         onKeyDown={onKeyDown}
+        onPaste={onPaste}
         aria-label={placeholder}
         className="w-full resize-none rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-neutral-500 dark:border-neutral-700 dark:bg-neutral-800"
         data-comment-input
@@ -411,8 +510,43 @@ function Composer({
           ))}
         </ul>
       )}
-      {(text.trim() || onCancel) && (
+      {files.length > 0 && (
+        <div className="mt-2 space-y-1 rounded border border-neutral-200 p-2 dark:border-neutral-700">
+          {files.map((file, index) => (
+            <div key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center gap-2 text-xs">
+              {file.type.startsWith("image/") ? (
+                <img src={URL.createObjectURL(file)} alt="" className="h-8 w-8 rounded object-cover" />
+              ) : (
+                <ImageIcon size={16} className="text-neutral-400" />
+              )}
+              <span className="min-w-0 flex-1 truncate">{file.name}</span>
+              <button
+                type="button"
+                className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800"
+                onClick={() => setFiles((current) => current.filter((_, i) => i !== index))}
+                aria-label={`Remove ${file.name}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {(text.trim() || files.length > 0 || onCancel) && (
         <div className="mt-1.5 flex justify-end gap-1.5">
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              addFiles([...(event.target.files ?? [])]);
+              event.currentTarget.value = "";
+            }}
+          />
+          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => fileInput.current?.click()} aria-label="Attach files" title="Attach files">
+            <Paperclip size={14} />
+          </Button>
           {onCancel && (
             <Button variant="ghost" className="px-2 py-1 text-xs" onClick={onCancel}>
               {t("common.cancel")}
