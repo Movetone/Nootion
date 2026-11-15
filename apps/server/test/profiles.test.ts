@@ -15,6 +15,7 @@ beforeEach(async () => {
 describe("profiles", () => {
   it("shows a user's profile to another signed-in user", async () => {
     const aliceId = await alice.id();
+    const oldHomePageId = (await alice.get("/api/home")).json().pageId;
     const response = await boris.get(`/api/profiles/${aliceId}`);
     expect(response.statusCode).toBe(200);
     const profile = response.json().profile;
@@ -22,6 +23,7 @@ describe("profiles", () => {
       user: { id: aliceId, name: "Alice" },
       page: { id: expect.any(String), title: "Alice" },
     });
+    expect(profile.page.id).toBe(oldHomePageId);
     expect((await boris.get(`/api/pages/${profile.page.id}`)).statusCode).toBe(200);
     expect((await boris.get(`/api/pages/${profile.page.id}/content`)).statusCode).toBe(200);
     expect((await boris.put(`/api/pages/${profile.page.id}/content`, { markdown: "Boris cannot edit Alice's profile" })).statusCode).toBe(404);
