@@ -223,11 +223,11 @@ export function CoverBanner({ cover, position }: { cover: string; position: numb
 }
 
 /** A cover filling its box: a gradient, or an image cropped at the chosen position. */
-export function CoverFill({ cover, position }: { cover: string; position: number }) {
+export function CoverFill({ cover, position, fit = "cover" }: { cover: string; position: number; fit?: "cover" | "contain" }) {
   const gradient = gradientOf(cover);
   return gradient ? (
     <div className="h-full w-full" style={{ background: gradient }} />
   ) : (
-    <img src={cover} alt="" loading="lazy" className="h-full w-full object-cover" style={{ objectPosition: `center ${position}%` }} />
+    <img src={cover} alt="" loading="lazy" className="h-full w-full" style={{ objectFit: fit, objectPosition: `center ${position}%` }} />
   );
 }
