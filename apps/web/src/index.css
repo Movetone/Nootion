@@ -406,6 +406,9 @@ body {
 .nootion-content .callout[data-emoji=""] {
   @apply pl-4;
 }
+.nootion-content .callout[data-transparent="true"] {
+  @apply border border-neutral-200 bg-transparent dark:border-neutral-700 dark:bg-transparent;
+}
 .nootion-content .callout::before {
   content: attr(data-emoji);
   @apply absolute top-4 left-4 text-xl leading-7;

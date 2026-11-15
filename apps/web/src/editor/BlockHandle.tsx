@@ -36,7 +36,7 @@ import { isMac } from "../components/QuickCapture";
 import { editedLabel } from "../components/EditedAt";
 import { copyText } from "../lib/browser";
 import { canTurnInto, currentKind, deleteBlock, duplicateBlock, moveBlock, stillThere, turnInto, type Block, type TurnInto } from "./blockActions";
-import { canColor, ensureBlockId, lastEdit, setBlockColor, type BlockColor } from "./blockAttrs";
+import { canColor, ensureBlockId, lastEdit, setBlockColor, setCalloutAttrs, type BlockColor } from "./blockAttrs";
 import { setTaskRepeat, taskRepeatLabel } from "./taskRepeat";
 import { TaskRepeatDialog } from "./TaskRepeatDialog";
 
@@ -176,7 +176,9 @@ function clearCalloutEmoji(editor: Editor, current: { current: Block | null }): 
   };
 }
 
-type Sub = "turn" | "color" | "repeat";
+type Sub = "turn" | "color" | "repeat" | "callout";
+
+const CALLOUT_ICONS = ["💡", "", "ℹ️", "⚠️", "✅", "❗", "⭐", "🔥", "📌", "💬", "❤️", "🚀", "🎯", "🔒", "🛠️", "📚", "📝", "❌", "🔔", "👀", "🧠"] as const;
 
 interface Action {
   id: string;
@@ -328,9 +330,30 @@ function BlockMenu({
       ]
     : [];
 
+  const calloutActions: Action[] =
+    kind === "callout"
+      ? [
+          ...CALLOUT_ICONS.map((icon) => ({
+            id: `callout-icon-${icon || "none"}`,
+            label: icon || "No icon",
+            icon: <span className="text-base">{icon || "∅"}</span>,
+            checked: (block.node.attrs.emoji as string) === icon,
+            run: act(() => setCalloutAttrs(editor, block.pos, { emoji: icon })),
+          })),
+          {
+            id: "callout-transparent",
+            label: "Transparent background",
+            icon: <span className="h-4 w-4 rounded border border-dashed border-neutral-400" />,
+            checked: block.node.attrs.transparent === true,
+            run: act(() => setCalloutAttrs(editor, block.pos, { transparent: block.node.attrs.transparent !== true })),
+          },
+        ]
+      : [];
+
   const actions: Action[] = [
     ...(kinds.length ? [{ id: "turn", label: t("block.turnInto"), icon: <Repeat2 size={16} />, sub: "turn" as const, run: open("turn") }] : []),
     ...(colors.length ? [{ id: "color", label: t("block.color"), icon: <Palette size={16} />, sub: "color" as const, run: open("color") }] : []),
+    ...(calloutActions.length ? [{ id: "callout", label: "Callout", icon: <Lightbulb size={16} />, sub: "callout" as const, run: open("callout") }] : []),
     ...(repeats.length
       ? [
           {
@@ -396,7 +419,7 @@ function BlockMenu({
   // Typing searches every action, those of the submenus included.
   const shown = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
-    if (!q) return sub === "turn" ? kinds : sub === "color" ? colors : sub === "repeat" ? repeats : actions;
+    if (!q) return sub === "turn" ? kinds : sub === "color" ? colors : sub === "repeat" ? repeats : sub === "callout" ? calloutActions : actions;
     const prefixed = (list: Action[], prefix: string) => list.map((a) => ({ ...a, section: undefined, label: `${prefix} : ${a.label}` }));
     return [
       ...actions.filter((a) => !a.sub),
@@ -404,6 +427,7 @@ function BlockMenu({
       ...prefixed(colors.slice(0, OPTION_COLORS.length + 1), t("block.textColor")),
       ...prefixed(colors.slice(OPTION_COLORS.length + 1), t("block.background")),
       ...prefixed(repeats, t("task.repeat")),
+      ...prefixed(calloutActions, "Callout"),
     ].filter((a) => {
       // Every word, in any order: "blue back" finds "Background: Blue".
       const label = a.label.toLocaleLowerCase();
@@ -449,7 +473,8 @@ function BlockMenu({
             onClick={() => setSub(null)}
             className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-xs font-medium text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
-            <ChevronLeft size={14} /> {sub === "turn" ? t("block.turnInto") : sub === "repeat" ? t("task.repeat") : t("block.color")}
+            <ChevronLeft size={14} />{" "}
+            {sub === "turn" ? t("block.turnInto") : sub === "repeat" ? t("task.repeat") : sub === "callout" ? "Callout" : t("block.color")}
           </button>
         )}
         <div className={sub === "color" && !query ? "max-h-80 overflow-y-auto" : undefined}>

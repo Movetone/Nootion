@@ -73,7 +73,19 @@ export function setBlockColor(editor: Editor, pos: number, color: BlockColor | n
     .run();
 }
 
-/** The block's id for links, made now if it has none. */
+export function setCalloutAttrs(editor: Editor, pos: number, patch: { emoji?: string; transparent?: boolean }) {
+  editor
+    .chain()
+    .focus()
+    .command(({ tr }) => {
+      const node = tr.doc.nodeAt(pos);
+      if (!node || node.type.name !== "callout") return false;
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...patch });
+      return true;
+    })
+    .run();
+}
+
 export function ensureBlockId(editor: Editor, pos: number): string | null {
   const node = editor.state.doc.nodeAt(pos);
   if (!node || !hasAttr(node, "blockId")) return null;
