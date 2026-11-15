@@ -95,6 +95,7 @@ function useSetMe() {
     qc.setQueryData(["me"], user);
     // Names and pictures also appear in the people directory.
     void qc.invalidateQueries({ queryKey: ["users"] });
+    void qc.invalidateQueries({ queryKey: ["profile"] });
   };
 }
 
@@ -105,6 +106,7 @@ function Saved({ show }: { show: boolean }) {
 function ProfileSection({ user }: { user: PublicUser }) {
   const setMe = useSetMe();
   const [name, setName] = useState(user.name);
+  const [status, setStatus] = useState(user.status);
   const [error, setError] = useState<unknown>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -113,7 +115,7 @@ function ProfileSection({ user }: { user: PublicUser }) {
     e.preventDefault();
     setError(null);
     try {
-      setMe((await api<{ user: PublicUser }>("/auth/me", { method: "PATCH", body: { name } })).user);
+      setMe((await api<{ user: PublicUser }>("/auth/me", { method: "PATCH", body: { name, status } })).user);
       setSaved(true);
     } catch (err) {
       setError(err);
@@ -169,6 +171,16 @@ function ProfileSection({ user }: { user: PublicUser }) {
           }}
           required
           maxLength={100}
+        />
+        <Field
+          label="Status"
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setSaved(false);
+          }}
+          maxLength={160}
+          placeholder="What are you working on?"
         />
         <ErrorText error={error} />
         <div className="flex items-center gap-3">

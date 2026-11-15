@@ -1,5 +1,4 @@
 import { useParams } from "react-router-dom";
-import { t } from "@nootion/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar } from "../components/Avatar";
 import { AddCoverButton, PageCover } from "../components/PageCover";
@@ -42,9 +41,8 @@ export function ProfileView({ id }: { id: string }) {
               <Avatar name={user.name} url={user.avatarUrl} size={96} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("account.profile")}</p>
               <h1 className="truncate text-3xl font-bold text-neutral-900 dark:text-neutral-100">{user.name}</h1>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">ID: {user.id}</p>
+              {user.status && <p className="mt-1 text-sm italic text-neutral-500 dark:text-neutral-400">{user.status}</p>}
             </div>
             {canEditCover && !detail?.cover && <AddCoverButton pageId={page.id} onChange={saveCover} />}
           </div>

@@ -19,6 +19,7 @@ export function toPublicUser(u: UserRow): PublicUser {
     name: u.name,
     email: u.email,
     avatarUrl: avatarUrl(u),
+    status: u.status,
     role: u.role,
     disabled: u.disabled,
     locale: isLocale(u.locale) ? u.locale : "en",
@@ -28,10 +29,7 @@ export function toPublicUser(u: UserRow): PublicUser {
 }
 
 /** Creates a user together with their private personal workspace. */
-export async function createUser(
-  db: Db,
-  input: { name: string; email: string; password: string; role: UserRole; locale: Locale },
-): Promise<UserRow> {
+export async function createUser(db: Db, input: { name: string; email: string; password: string; role: UserRole; locale: Locale }): Promise<UserRow> {
   const passwordHash = await hashPassword(input.password);
   return db.transaction((tx) => {
     const user = tx
@@ -40,7 +38,9 @@ export async function createUser(
       .returning()
       .get();
     const workspaceId = randomUUID();
-    tx.insert(workspaces).values({ id: workspaceId, name: t("workspace.personal"), kind: "personal", createdBy: user.id }).run();
+    tx.insert(workspaces)
+      .values({ id: workspaceId, name: t("workspace.personal"), kind: "personal", createdBy: user.id })
+      .run();
     tx.insert(workspaceMembers).values({ workspaceId, userId: user.id, role: "owner" }).run();
     return user;
   });
@@ -68,6 +68,12 @@ export function knownUserIds(db: Db, user: Pick<UserRow, "id" | "role">): Set<st
     sql`, `,
   );
   add(ids(db.all<{ id: string }>(sql`SELECT DISTINCT user_id AS id FROM workspace_members WHERE workspace_id IN (${list})`)));
-  add(ids(db.all<{ id: string }>(sql`SELECT DISTINCT pp.user_id AS id FROM page_permissions pp JOIN pages p ON p.id = pp.page_id WHERE p.workspace_id IN (${list})`)));
+  add(
+    ids(
+      db.all<{ id: string }>(
+        sql`SELECT DISTINCT pp.user_id AS id FROM page_permissions pp JOIN pages p ON p.id = pp.page_id WHERE p.workspace_id IN (${list})`,
+      ),
+    ),
+  );
   return known;
 }

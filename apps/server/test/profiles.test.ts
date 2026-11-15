@@ -28,7 +28,8 @@ describe("profiles", () => {
     expect((await boris.get(`/api/pages/${profile.page.id}/content`)).statusCode).toBe(200);
     expect((await boris.put(`/api/pages/${profile.page.id}/content`, { markdown: "Boris cannot edit Alice's profile" })).statusCode).toBe(404);
     expect((await alice.put(`/api/pages/${profile.page.id}/content`, { markdown: "Alice's profile content" })).statusCode).toBe(200);
-    expect((await alice.patch("/api/auth/me", { name: "Alice Cooper" })).statusCode).toBe(200);
+    expect((await alice.patch("/api/auth/me", { name: "Alice Cooper", status: "In a design review" })).statusCode).toBe(200);
+    expect((await boris.get(`/api/profiles/${aliceId}`)).json().profile.user).toMatchObject({ name: "Alice Cooper", status: "In a design review" });
     expect((await boris.get(`/api/profiles/${aliceId}`)).json().profile.page.title).toBe("Alice Cooper");
   });
 });

@@ -78,6 +78,7 @@ export const updateMeInput = z
     newPassword: passwordSchema.optional(),
     currentPassword: z.string().max(256).optional(),
     locale: localeSchema.optional(),
+    status: z.string().trim().max(160).optional(),
   })
   .strict();
 export type UpdateMeInput = z.infer<typeof updateMeInput>;
@@ -91,6 +92,8 @@ export interface PublicUser {
   email: string;
   /** URL of the profile picture, or null. */
   avatarUrl: string | null;
+  /** A short current-status line shown below the display name. */
+  status: string;
   role: UserRole;
   disabled: boolean;
   /** Interface language. */
