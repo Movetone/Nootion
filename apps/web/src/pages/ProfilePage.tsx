@@ -6,6 +6,10 @@ import { useProfile } from "../lib/queries";
 
 export function ProfilePage() {
   const { id = "" } = useParams();
+  return <ProfileView id={id} />;
+}
+
+export function ProfileView({ id }: { id: string }) {
   const profile = useProfile(id);
   if (profile.isLoading) return null;
   if (profile.isError || !profile.data) {

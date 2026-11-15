@@ -15,6 +15,15 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
       if (existing) return existing;
     }
 
+    if (user.homePageId) {
+      const existingHome = db.select().from(pages).where(eq(pages.id, user.homePageId)).get();
+      if (existingHome) {
+        db.update(pages).set({ title: user.name, updatedAt: new Date(), updatedBy: user.id }).where(eq(pages.id, existingHome.id)).run();
+        db.update(users).set({ profilePageId: existingHome.id }).where(eq(users.id, user.id)).run();
+        return { ...existingHome, title: user.name };
+      }
+    }
+
     const workspace = db
       .select({ id: workspaces.id })
       .from(workspaces)
