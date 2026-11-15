@@ -171,7 +171,8 @@ export function TableView({
   const groupOf = useMemo(() => new Map((groups ?? []).flatMap((g) => g.rows.map((r) => [r.id, g.key] as const))), [groups]);
 
   /** The rows a menu acts on: the selection when the row is part of it, else the row alone. */
-  const menuRows = (rowId: string) => (selected.has(rowId) && selected.size > 1 ? data.rows.filter((r) => selected.has(r.id)) : data.rows.filter((r) => r.id === rowId));
+  const menuRows = (rowId: string) =>
+    selected.has(rowId) && selected.size > 1 ? data.rows.filter((r) => selected.has(r.id)) : data.rows.filter((r) => r.id === rowId);
   // Rows the open menu acts on, highlighted (worked out once, not for each row).
   const menuTargets = rowMenu ? (selected.has(rowMenu.rowId) && selected.size > 1 ? selected : new Set([rowMenu.rowId])) : null;
 
@@ -180,7 +181,8 @@ export function TableView({
     // Text being edited keeps the browser's menu (copy, paste, spelling).
     // (Rows of a database inside a page sit in the page's editor, which is itself editable: only the nearest counts.)
     const field = (e.target as HTMLElement).closest<HTMLElement>("input, textarea, [contenteditable]");
-    const editing = !!field && (field instanceof HTMLTextAreaElement || (field instanceof HTMLInputElement && field.type !== "checkbox") || field.isContentEditable);
+    const editing =
+      !!field && (field instanceof HTMLTextAreaElement || (field instanceof HTMLInputElement && field.type !== "checkbox") || field.isContentEditable);
     if (e.type === "contextmenu" && editing) return;
     e.preventDefault();
     setRowMenu({ rowId, anchor: e.type === "contextmenu" ? { x: e.clientX, y: e.clientY } : (e.currentTarget as HTMLElement) });
@@ -189,7 +191,11 @@ export function TableView({
   /** Adds a row right below another one, in the same group. */
   function addRowBelow(row: DatabaseRow) {
     const key = groupOf.get(row.id);
-    const values = initialValues(ctx, view?.config ?? {}, groupProp && key !== undefined && canMoveBetweenGroups(groupProp.type) ? { prop: groupProp, key } : undefined);
+    const values = initialValues(
+      ctx,
+      view?.config ?? {},
+      groupProp && key !== undefined && canMoveBetweenGroups(groupProp.type) ? { prop: groupProp, key } : undefined,
+    );
     actions!.insertRow.mutate({ values, after: row.id });
   }
 
@@ -211,20 +217,26 @@ export function TableView({
     }
   }
 
-  const widthOf = (c: { prop: DatabaseProperty; col: ViewColumn }) => widths[c.prop.id] ?? c.col.width ?? (c.prop.type === "title" ? TITLE_WIDTH : DEFAULT_WIDTH);
+  const widthOf = (c: { prop: DatabaseProperty; col: ViewColumn }) =>
+    widths[c.prop.id] ?? c.col.width ?? (c.prop.type === "title" ? TITLE_WIDTH : DEFAULT_WIDTH);
 
   function saveColumns(next: ViewColumn[]) {
     if (view && actions) actions.updateView.mutate({ viewId: view.id, config: { ...view.config, columns: next } });
   }
   const currentColumns = () => columns.map((c) => ({ ...c.col, width: widths[c.prop.id] ?? c.col.width }));
-  const setColumn = (propId: string, patch: Partial<ViewColumn>) => saveColumns(currentColumns().map((c) => (c.propertyId === propId ? { ...c, ...patch } : c)));
+  const setColumn = (propId: string, patch: Partial<ViewColumn>) =>
+    saveColumns(currentColumns().map((c) => (c.propertyId === propId ? { ...c, ...patch } : c)));
 
   function move(fromId: string, toId: string) {
     if (fromId === toId) return;
     const cols = currentColumns();
     const from = cols.findIndex((c) => c.propertyId === fromId);
     const [c] = cols.splice(from, 1);
-    cols.splice(cols.findIndex((x) => x.propertyId === toId), 0, c);
+    cols.splice(
+      cols.findIndex((x) => x.propertyId === toId),
+      0,
+      c,
+    );
     saveColumns(cols);
   }
 
@@ -246,179 +258,188 @@ export function TableView({
     window.addEventListener("pointerup", onUp);
   }
 
-  const createOption = (prop: DatabaseProperty) => async (name: string): Promise<SelectOption> => {
-    const options = prop.config.options ?? [];
-    const o = newOption(name, options);
-    await actions!.updateProperty.mutateAsync({ propId: prop.id, config: { ...prop.config, options: [...options, o] } });
-    return o;
-  };
+  const createOption =
+    (prop: DatabaseProperty) =>
+    async (name: string): Promise<SelectOption> => {
+      const options = prop.config.options ?? [];
+      const o = newOption(name, options);
+      await actions!.updateProperty.mutateAsync({ propId: prop.id, config: { ...prop.config, options: [...options, o] } });
+      return o;
+    };
 
   const menuProp = menu && data.properties.find((p) => p.id === menu.propId);
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const gutter = editable ? "w-8 shrink-0" : "w-0 shrink-0";
 
   const renderRow = (row: DatabaseRow) => (
-            <div
-              key={row.id}
-              role="row"
-              data-row-id={row.id}
-              onContextMenu={(e) => openRowMenu(e, row.id)}
-              onDragOver={(e) => {
-                if (!rowDrag.current) return;
-                e.preventDefault();
-                const r = e.currentTarget.getBoundingClientRect();
-                const before = e.clientY < r.top + r.height / 2;
-                if (dropAt?.rowId !== row.id || dropAt.before !== before) setDropAt({ rowId: row.id, before });
-              }}
-              onDrop={(e) => {
-                if (!rowDrag.current) return;
-                e.preventDefault();
-                const r = e.currentTarget.getBoundingClientRect();
-                dropRow(row, e.clientY < r.top + r.height / 2);
-              }}
-              className={`group relative flex border-b border-neutral-200 dark:border-neutral-800 ${menuTargets?.has(row.id) ? "bg-blue-50/60 dark:bg-blue-950/30" : ""}`}
+    <div
+      key={row.id}
+      role="row"
+      data-row-id={row.id}
+      onContextMenu={(e) => openRowMenu(e, row.id)}
+      onDragOver={(e) => {
+        if (!rowDrag.current) return;
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        const before = e.clientY < r.top + r.height / 2;
+        if (dropAt?.rowId !== row.id || dropAt.before !== before) setDropAt({ rowId: row.id, before });
+      }}
+      onDrop={(e) => {
+        if (!rowDrag.current) return;
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        dropRow(row, e.clientY < r.top + r.height / 2);
+      }}
+      className={`group relative flex border-b border-neutral-200 dark:border-neutral-800 ${menuTargets?.has(row.id) ? "bg-blue-50/60 dark:bg-blue-950/30" : ""}`}
+    >
+      {dropAt?.rowId === row.id && (
+        <div className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 bg-blue-500 ${dropAt.before ? "-top-px" : "-bottom-px"}`} />
+      )}
+      {actions && (
+        <div
+          className="absolute right-full top-0 flex h-full items-start pr-0.5 pt-1.5 opacity-0 group-hover:opacity-100 has-[:focus-visible]:opacity-100"
+          data-row-handle
+        >
+          {editable && (
+            <button
+              type="button"
+              title={t("table.addRowBelow")}
+              aria-label={t("table.addRowBelow")}
+              onClick={() => addRowBelow(row)}
+              className="flex h-6 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
             >
-              {dropAt?.rowId === row.id && <div className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 bg-blue-500 ${dropAt.before ? "-top-px" : "-bottom-px"}`} />}
-              {actions && (
-                <div className="absolute right-full top-0 flex h-full items-start pr-0.5 pt-1.5 opacity-0 group-hover:opacity-100 has-[:focus-visible]:opacity-100" data-row-handle>
-                  {editable && (
-                    <button
-                      type="button"
-                      title={t("table.addRowBelow")}
-                      aria-label={t("table.addRowBelow")}
-                      onClick={() => addRowBelow(row)}
-                      className="flex h-6 w-5 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-                    >
-                      <Plus size={15} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    title={editable && sorted ? t("table.rowHandleSorted") : editable ? t("table.rowHandle") : t("rowMenu.label")}
-                    aria-label={t("rowMenu.label")}
-                    aria-haspopup="menu"
-                    draggable={editable && !sorted}
-                    onDragStart={(e) => {
-                      rowDrag.current = row.id;
-                      e.dataTransfer.effectAllowed = "move";
-                      e.dataTransfer.setData("text/plain", row.title);
-                      const el = e.currentTarget.closest("[role=row]");
-                      if (el) e.dataTransfer.setDragImage(el, 40, 16);
-                    }}
-                    onDragEnd={() => {
-                      rowDrag.current = null;
-                      setDropAt(null);
-                    }}
-                    onClick={(e) => openRowMenu(e, row.id)}
-                    className={`flex h-6 w-4 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 ${editable && !sorted ? "cursor-grab active:cursor-grabbing" : ""}`}
-                  >
-                    <GripVertical size={15} />
-                  </button>
-                </div>
-              )}
-              <div className={`${gutter} flex items-center justify-center`}>
-                {editable && (
-                  <input
-                    type="checkbox"
-                    aria-label={t("table.selectRow")}
-                    className={`h-3.5 w-3.5 accent-blue-600 ${selected.has(row.id) ? "" : "opacity-0 group-hover:opacity-60"}`}
-                    checked={selected.has(row.id)}
-                    onChange={() =>
-                      setSelected((s) => {
-                        const n = new Set(s);
-                        if (n.has(row.id)) n.delete(row.id);
-                        else n.add(row.id);
-                        return n;
-                      })
-                    }
-                  />
-                )}
+              <Plus size={15} />
+            </button>
+          )}
+          <button
+            type="button"
+            title={editable && sorted ? t("table.rowHandleSorted") : editable ? t("table.rowHandle") : t("rowMenu.label")}
+            aria-label={t("rowMenu.label")}
+            aria-haspopup="menu"
+            draggable={editable && !sorted}
+            onDragStart={(e) => {
+              rowDrag.current = row.id;
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", row.title);
+              const el = e.currentTarget.closest("[role=row]");
+              if (el) e.dataTransfer.setDragImage(el, 40, 16);
+            }}
+            onDragEnd={() => {
+              rowDrag.current = null;
+              setDropAt(null);
+            }}
+            onClick={(e) => openRowMenu(e, row.id)}
+            className={`flex h-6 w-4 items-center justify-center rounded text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 ${editable && !sorted ? "cursor-grab active:cursor-grabbing" : ""}`}
+          >
+            <GripVertical size={15} />
+          </button>
+        </div>
+      )}
+      <div className={`${gutter} flex items-center justify-center`}>
+        {editable && (
+          <input
+            type="checkbox"
+            aria-label={t("table.selectRow")}
+            className={`h-3.5 w-3.5 accent-blue-600 ${selected.has(row.id) ? "" : "opacity-0 group-hover:opacity-60"}`}
+            checked={selected.has(row.id)}
+            onChange={() =>
+              setSelected((s) => {
+                const n = new Set(s);
+                if (n.has(row.id)) n.delete(row.id);
+                else n.add(row.id);
+                return n;
+              })
+            }
+          />
+        )}
+      </div>
+      {visible.map((c) => (
+        <div key={c.prop.id} style={{ width: widthOf(c) }} className="relative shrink-0 border-r border-neutral-200 dark:border-neutral-800">
+          {c.prop.type === "title" && row.icon ? (
+            // The row's page icon, before its title, as in Notion.
+            <div className="flex items-start">
+              <span className="flex h-[34px] shrink-0 items-center pl-2 leading-none [&_img]:h-4 [&_img]:w-4" data-row-icon>
+                {pageIcon(row.icon)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <Cell
+                  prop={c.prop}
+                  value={c.prop.type === "title" ? row.title : (row.values[c.prop.id] ?? null)}
+                  rowId={row.id}
+                  databaseId={data.id}
+                  people={data.people}
+                  editable={editable}
+                  fileUrl={fileUrl}
+                  related={data.related}
+                  rollupTarget={data.rollupTargets[c.prop.id]}
+                  rowHref={(id) => rowHref({ id } as DatabaseRow)}
+                  onChange={(value: CellValue) => actions?.updateCell.mutate({ rowId: row.id, propId: c.prop.id, value })}
+                  onCreateOption={createOption(c.prop)}
+                />
               </div>
-              {visible.map((c) => (
-                <div key={c.prop.id} style={{ width: widthOf(c) }} className="relative shrink-0 border-r border-neutral-200 dark:border-neutral-800">
-                  {c.prop.type === "title" && row.icon ? (
-                    // The row's page icon, before its title, as in Notion.
-                    <div className="flex items-start">
-                      <span className="flex h-[34px] shrink-0 items-center pl-2 leading-none [&_img]:h-4 [&_img]:w-4" data-row-icon>
-                        {pageIcon(row.icon)}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                      <Cell
-                        prop={c.prop}
-                        value={c.prop.type === "title" ? row.title : (row.values[c.prop.id] ?? null)}
-                        rowId={row.id}
-                        databaseId={data.id}
-                        people={data.people}
-                        editable={editable}
-                        fileUrl={fileUrl}
-                        related={data.related}
-                        rollupTarget={data.rollupTargets[c.prop.id]}
-                        rowHref={(id) => rowHref({ id } as DatabaseRow)}
-                        onChange={(value: CellValue) => actions?.updateCell.mutate({ rowId: row.id, propId: c.prop.id, value })}
-                        onCreateOption={createOption(c.prop)}
-                      />
-                      </div>
-                    </div>
-                  ) : (
-                    <Cell
-                      prop={c.prop}
-                      value={c.prop.type === "title" ? row.title : (row.values[c.prop.id] ?? null)}
-                      rowId={row.id}
-                      databaseId={data.id}
-                      people={data.people}
-                      editable={editable}
-                      fileUrl={fileUrl}
-                      related={data.related}
-                      rollupTarget={data.rollupTargets[c.prop.id]}
-                      rowHref={(id) => rowHref({ id } as DatabaseRow)}
-                      onChange={(value: CellValue) => actions?.updateCell.mutate({ rowId: row.id, propId: c.prop.id, value })}
-                      onCreateOption={createOption(c.prop)}
-                    />
-                  )}
-                  {c.prop.type === "title" && (
-                    <Link
-                      to={rowHref(row)}
-                      title={t("common.open")}
-                      aria-label={t("table.openRow", { title: row.title || t("common.untitled") })}
-                      className="absolute right-1 top-1.5 z-[5] flex items-center gap-1 rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-xs text-neutral-500 opacity-0 hover:bg-neutral-100 group-hover:opacity-100 dark:border-neutral-700 dark:bg-neutral-900"
-                    >
-                      <Maximize2 size={11} /> {t("common.open")}
-                    </Link>
-                  )}
-                </div>
-              ))}
             </div>
+          ) : (
+            <Cell
+              prop={c.prop}
+              value={c.prop.type === "title" ? row.title : (row.values[c.prop.id] ?? null)}
+              rowId={row.id}
+              databaseId={data.id}
+              people={data.people}
+              editable={editable}
+              fileUrl={fileUrl}
+              related={data.related}
+              rollupTarget={data.rollupTargets[c.prop.id]}
+              rowHref={(id) => rowHref({ id } as DatabaseRow)}
+              onChange={(value: CellValue) => actions?.updateCell.mutate({ rowId: row.id, propId: c.prop.id, value })}
+              onCreateOption={createOption(c.prop)}
+            />
+          )}
+          {c.prop.type === "title" && (
+            <Link
+              to={rowHref(row)}
+              title={t("common.open")}
+              aria-label={t("table.openRow", { title: row.title || t("common.untitled") })}
+              className="absolute right-1 top-1.5 z-[5] flex items-center gap-1 rounded border border-neutral-200 bg-white px-1.5 py-0.5 text-xs text-neutral-500 opacity-0 hover:bg-neutral-100 group-hover:opacity-100 dark:border-neutral-700 dark:bg-neutral-900"
+            >
+              <Maximize2 size={11} /> {t("common.open")}
+            </Link>
+          )}
+        </div>
+      ))}
+    </div>
   );
 
   const renderCalcs = (calcRows: DatabaseRow[]) =>
     (editable || Object.keys(view?.config.calculations ?? {}).length > 0) && (
-            <div role="row" aria-label={t("table.calculations")} className="group/calc flex">
-              <div className={gutter} />
-              {visible.map((c) => {
-                const fn = view?.config.calculations?.[c.prop.id];
-                const result = fn ? calcColumn(data, c.prop, fn, calcRows) : null;
-                return (
-                  <button
-                    key={c.prop.id}
-                    style={{ width: widthOf(c) }}
-                    disabled={!editable}
-                    aria-label={t("table.calcOf", { name: c.prop.name })}
-                    onClick={(e) => setCalcMenu({ propId: c.prop.id, anchor: e.currentTarget })}
-                    className="flex shrink-0 items-center justify-end gap-1 truncate px-2 py-1.5 text-xs text-neutral-500 enabled:hover:bg-neutral-100 dark:enabled:hover:bg-neutral-800"
-                  >
-                    {fn ? (
-                      <>
-                        <span className="truncate text-neutral-400">{calcShort(fn)}</span>
-                        <span className="font-medium tabular-nums text-neutral-800 dark:text-neutral-200">{result ? formatCalc(result, calcFormatProp(data, c.prop)) : "—"}</span>
-                      </>
-                    ) : (
-                      <span className="opacity-0 group-hover/calc:opacity-100">{t("table.calculate")}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+      <div role="row" aria-label={t("table.calculations")} className="group/calc flex">
+        <div className={gutter} />
+        {visible.map((c) => {
+          const fn = view?.config.calculations?.[c.prop.id];
+          const result = fn ? calcColumn(data, c.prop, fn, calcRows) : null;
+          return (
+            <button
+              key={c.prop.id}
+              style={{ width: widthOf(c) }}
+              disabled={!editable}
+              aria-label={t("table.calcOf", { name: c.prop.name })}
+              onClick={(e) => setCalcMenu({ propId: c.prop.id, anchor: e.currentTarget })}
+              className="flex shrink-0 items-center justify-end gap-1 truncate px-2 py-1.5 text-xs text-neutral-500 enabled:hover:bg-neutral-100 dark:enabled:hover:bg-neutral-800"
+            >
+              {fn ? (
+                <>
+                  <span className="truncate text-neutral-400">{calcShort(fn)}</span>
+                  <span className="font-medium tabular-nums text-neutral-800 dark:text-neutral-200">
+                    {result ? formatCalc(result, calcFormatProp(data, c.prop)) : "—"}
+                  </span>
+                </>
+              ) : (
+                <span className="opacity-0 group-hover/calc:opacity-100">{t("table.calculate")}</span>
+              )}
+            </button>
           );
+        })}
+      </div>
+    );
 
   if (mobile) {
     return (
@@ -478,7 +499,11 @@ export function TableView({
                 role="columnheader"
                 style={{ width: widthOf(c) }}
                 draggable={editable && c.prop.type !== "title"}
-                onDragStart={() => (drag.current = c.prop.id)}
+                onDragStart={(e) => {
+                  drag.current = c.prop.id;
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", c.prop.name);
+                }}
                 onDragOver={(e) => editable && drag.current && c.prop.type !== "title" && e.preventDefault()}
                 onDrop={() => drag.current && move(drag.current, c.prop.id)}
                 onDragEnd={() => (drag.current = null)}
@@ -501,7 +526,12 @@ export function TableView({
               </div>
             ))}
             {editable && (
-              <button data-print-hide aria-label={t("table.addProperty")} onClick={(e) => setAdding(e.currentTarget)} className="flex w-10 shrink-0 items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800">
+              <button
+                data-print-hide
+                aria-label={t("table.addProperty")}
+                onClick={(e) => setAdding(e.currentTarget)}
+                className="flex w-10 shrink-0 items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              >
                 <Plus size={16} />
               </button>
             )}
@@ -518,7 +548,11 @@ export function TableView({
               const cut = shownRows.length < g.rows.length;
               return (
                 <Fragment key={g.key}>
-                  <div role="row" aria-label={t("table.group", { name: g.label })} className="flex items-center gap-1.5 border-b border-neutral-200 py-1.5 pl-1 dark:border-neutral-800">
+                  <div
+                    role="row"
+                    aria-label={t("table.group", { name: g.label })}
+                    className="flex items-center gap-1.5 border-b border-neutral-200 py-1.5 pl-1 dark:border-neutral-800"
+                  >
                     <button
                       aria-label={open ? t("table.collapseGroup") : t("table.expandGroup")}
                       aria-expanded={open}
@@ -532,7 +566,9 @@ export function TableView({
                     </button>
                   </div>
                   {open && shownRows.map(renderRow)}
-                  {open && cut && <ShowMoreRows shown={limit} total={countGroupRows(groups, (x) => !collapsed.has(x.key))} onMore={more} className="sticky left-0" />}
+                  {open && cut && (
+                    <ShowMoreRows shown={limit} total={countGroupRows(groups, (x) => !collapsed.has(x.key))} onMore={more} className="sticky left-0" />
+                  )}
                   {open && !cut && editable && canMoveBetweenGroups(groupProp!.type) && (
                     <button
                       data-print-hide
@@ -554,7 +590,6 @@ export function TableView({
             </>
           )}
           {rows.length === 0 && !editable && <div className="px-3 py-2 text-neutral-400">{t("table.noRows")}</div>}
-
         </div>
       </div>
       {editable && !(groups && canMoveBetweenGroups(groupProp!.type)) && (
@@ -612,7 +647,15 @@ export function TableView({
       {calcMenu && view && actions && (
         <Popover anchor={calcMenu.anchor} onClose={() => setCalcMenu(null)} width={240}>
           <div className="max-h-80 overflow-y-auto">
-            {[null, ...calcFunctionsFor(calcType(data, data.properties.find((p) => p.id === calcMenu.propId)!))].map((fn) => (
+            {[
+              null,
+              ...calcFunctionsFor(
+                calcType(
+                  data,
+                  data.properties.find((p) => p.id === calcMenu.propId)!,
+                ),
+              ),
+            ].map((fn) => (
               <button
                 key={fn ?? "none"}
                 onClick={() => {
@@ -678,7 +721,11 @@ export function TableView({
                 data-plugin-type={`${pt.pluginId}.${pt.id}`}
                 onClick={async () => {
                   setAdding(null);
-                  await actions.addProperty.mutateAsync({ name: uniqueName(data, pt.name), type: "plugin", config: { plugin: { id: pt.pluginId, type: pt.id } } });
+                  await actions.addProperty.mutateAsync({
+                    name: uniqueName(data, pt.name),
+                    type: "plugin",
+                    config: { plugin: { id: pt.pluginId, type: pt.id } },
+                  });
                 }}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800"
               >
@@ -802,7 +849,11 @@ function RelationSetup({ data, onCreate }: { data: DatabaseData; onCreate: (data
       />
       <div className="max-h-64 overflow-y-auto">
         {databases.map((d) => (
-          <button key={d.id} onClick={() => setPicked(d)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800">
+          <button
+            key={d.id}
+            onClick={() => setPicked(d)}
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          >
             <span className="w-4 text-center">{pageIcon(d.icon) ?? "🗃"}</span>
             <span className="truncate">
               {pageTitle(d.title)}

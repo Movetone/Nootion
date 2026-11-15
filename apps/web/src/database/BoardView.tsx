@@ -33,7 +33,10 @@ export const isEmpty = (v: CellValue | undefined) => v === null || v === undefin
 export function boardGroupProp(data: DatabaseData, view: DatabaseViewInfo): DatabaseProperty | undefined {
   const chosen = data.properties.find((p) => p.id === view.config.groupBy && canGroupBy(p.type));
   return (
-    chosen ?? data.properties.find((p) => p.type === "status") ?? data.properties.find((p) => p.type === "select") ?? data.properties.find((p) => ["multi_select", "person", "checkbox"].includes(p.type))
+    chosen ??
+    data.properties.find((p) => p.type === "status") ??
+    data.properties.find((p) => p.type === "select") ??
+    data.properties.find((p) => ["multi_select", "person", "checkbox"].includes(p.type))
   );
 }
 
@@ -68,17 +71,11 @@ export function BoardView({
   const printing = usePrinting();
   const limitOf = (key: string) => (printing ? Infinity : (counts[key] ?? CARDS_BATCH));
   const showMore = (key: string) => setShown({ view: view.id, counts: { ...counts, [key]: limitOf(key) + CARDS_BATCH } });
-  const cardProps = orderedColumns(data.properties, view.config.columns).filter(
-    (c) => !c.col.hidden && c.prop.type !== "title" && c.prop.id !== prop?.id,
-  );
+  const cardProps = orderedColumns(data.properties, view.config.columns).filter((c) => !c.col.hidden && c.prop.type !== "title" && c.prop.id !== prop?.id);
   const movable = editable && !!prop && canMoveBetweenGroups(prop.type);
 
   if (!prop) {
-    return (
-      <p className="rounded border border-dashed border-neutral-300 px-3 py-4 text-sm text-neutral-500 dark:border-neutral-700">
-        {t("board.noGroup")}
-      </p>
-    );
+    return <p className="rounded border border-dashed border-neutral-300 px-3 py-4 text-sm text-neutral-500 dark:border-neutral-700">{t("board.noGroup")}</p>;
   }
 
   const drop = (to: string) => {
@@ -101,7 +98,10 @@ export function BoardView({
             setOver(g.key);
           }}
           onDragLeave={() => setOver((o) => (o === g.key ? null : o))}
-          onDrop={() => drop(g.key)}
+          onDrop={(e) => {
+            e.preventDefault();
+            drop(g.key);
+          }}
           className={`flex w-64 shrink-0 flex-col gap-1.5 rounded-lg p-1.5 ${over === g.key ? "bg-blue-50 dark:bg-blue-950/40" : "bg-neutral-50 dark:bg-neutral-900"}`}
         >
           <header className="flex items-center gap-1.5 px-1 py-0.5">
@@ -114,6 +114,7 @@ export function BoardView({
               draggable={movable}
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", row.title || row.id);
                 setDragging({ rowId: row.id, from: g.key });
               }}
               onDragEnd={() => {
