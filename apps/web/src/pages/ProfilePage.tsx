@@ -14,13 +14,13 @@ export function ProfilePage() {
 
 export function ProfileView({ id }: { id: string }) {
   const profile = useProfile(id);
+  const profilePage = usePage(profile.data?.page.id ?? "");
   const qc = useQueryClient();
   if (profile.isLoading) return null;
   if (profile.isError || !profile.data) {
     return <div className="mx-auto max-w-3xl px-5 py-8 text-neutral-500">Profile not found.</div>;
   }
   const { user, page, groups } = profile.data;
-  const profilePage = usePage(page.id);
   const detail = profilePage.data;
   const canEditCover = detail?.role === "full";
   const saveCover = async (patch: { cover?: string | null; coverPosition?: number }) => {
