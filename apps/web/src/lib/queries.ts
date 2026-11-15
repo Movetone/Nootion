@@ -69,7 +69,7 @@ export function useFavorites() {
 }
 
 export function useUserDirectory() {
-  return useQuery({ queryKey: keys.users, queryFn: async () => (await api<{ users: UserDirectoryEntry[] }>("/users")).users });
+  return useQuery({ queryKey: keys.users, queryFn: async () => (await api<{ users: UserDirectoryEntry[] }>("/users/directory")).users });
 }
 
 /** Refreshes everything that shows page lists (sidebar trees, shared section, open pages). */
