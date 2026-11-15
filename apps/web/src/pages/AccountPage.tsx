@@ -184,7 +184,7 @@ function ProfileSection({ user }: { user: PublicUser }) {
         />
         <ErrorText error={error} />
         <div className="flex items-center gap-3">
-          <Button type="submit" disabled={!name.trim() || name.trim() === user.name}>
+          <Button type="submit" disabled={!name.trim() || (name.trim() === user.name && status === user.status)}>
             {t("common.save")}
           </Button>
           <Saved show={saved} />
