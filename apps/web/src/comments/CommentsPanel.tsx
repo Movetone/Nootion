@@ -215,6 +215,7 @@ function Comment({ comment, pageId, threadId, canComment }: { comment: CommentIn
         <Composer
           autoFocus
           initial={comment.body}
+          attachments={false}
           submitLabel={t("common.save")}
           onCancel={() => setEditing(false)}
           onSubmit={async (body) => {
@@ -352,6 +353,7 @@ function Composer({
   initial = "",
   submitLabel = t("comments.send"),
   autoFocus,
+  attachments = true,
 }: {
   onSubmit: (body: string, files?: File[]) => Promise<unknown>;
   onCancel?: () => void;
@@ -359,6 +361,7 @@ function Composer({
   initial?: string;
   submitLabel?: string;
   autoFocus?: boolean;
+  attachments?: boolean;
 }) {
   const users = useUserDirectory();
   const { user } = useSession();
@@ -420,7 +423,7 @@ function Composer({
 
   function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
     const pasted = [...event.clipboardData.files];
-    if (pasted.length) addFiles(pasted);
+    if (attachments && pasted.length) addFiles(pasted);
   }
 
   async function submit() {
@@ -473,7 +476,7 @@ function Composer({
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
-        addFiles([...event.dataTransfer.files]);
+        if (attachments) addFiles([...event.dataTransfer.files]);
       }}
     >
       <textarea
@@ -532,21 +535,25 @@ function Composer({
           ))}
         </div>
       )}
-      {(text.trim() || files.length > 0 || onCancel) && (
+      {(attachments || text.trim() || onCancel) && (
         <div className="mt-1.5 flex justify-end gap-1.5">
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(event) => {
-              addFiles([...(event.target.files ?? [])]);
-              event.currentTarget.value = "";
-            }}
-          />
-          <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => fileInput.current?.click()} aria-label="Attach files" title="Attach files">
-            <Paperclip size={14} />
-          </Button>
+          {attachments && (
+            <>
+              <input
+                ref={fileInput}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  addFiles([...(event.target.files ?? [])]);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => fileInput.current?.click()} aria-label="Attach files" title="Attach files">
+                <Paperclip size={14} />
+              </Button>
+            </>
+          )}
           {onCancel && (
             <Button variant="ghost" className="px-2 py-1 text-xs" onClick={onCancel}>
               {t("common.cancel")}
