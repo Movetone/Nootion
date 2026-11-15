@@ -46,10 +46,19 @@ export function usePage(id: string) {
   });
 }
 
+export type ProfileGroup = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string | null;
+  color: string | null;
+  roles: { id: string; name: string }[];
+};
+
 export function useProfile(id: string) {
   return useQuery({
     queryKey: keys.profile(id),
-    queryFn: async () => (await api<{ profile: { user: PublicUser; page: PageSummary } }>(`/profiles/${id}`)).profile,
+    queryFn: async () => (await api<{ profile: { user: PublicUser; page: PageSummary; groups: ProfileGroup[] } }>(`/profiles/${id}`)).profile,
     enabled: !!id,
   });
 }
