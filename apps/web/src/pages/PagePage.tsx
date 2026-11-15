@@ -52,7 +52,7 @@ import { nextRunText, recurrenceText, RecurrenceDialog, useRecurrence } from "..
 import { pageIcon } from "../lib/icons";
 
 /** A page, by the id in the address (or the one given, for the home page). */
-export function PagePage({ id: given }: { id?: string }) {
+export function PagePage({ id: given, hideChrome = false }: { id?: string; hideChrome?: boolean }) {
   const { id: param = "" } = useParams();
   const id = given ?? param;
   const page = usePage(id);
@@ -65,7 +65,7 @@ export function PagePage({ id: given }: { id?: string }) {
       </div>
     );
   }
-  return <PageView key={page.data.id} page={page.data} />;
+  return <PageView key={page.data.id} page={page.data} hideChrome={hideChrome} />;
 }
 
 /** "Good morning" to "Good evening", by the time of day. */
@@ -74,7 +74,7 @@ function greeting(name: string) {
   return t(hour >= 5 && hour < 12 ? "home.morning" : hour >= 12 && hour < 18 ? "home.afternoon" : "home.evening", { name });
 }
 
-function PageView({ page }: { page: PageDetail }) {
+function PageView({ page, hideChrome = false }: { page: PageDetail; hideChrome?: boolean }) {
   const { user } = useSession();
   const canEdit = atLeast(page.role, "editor");
   const canManage = page.role === "full";
@@ -161,100 +161,106 @@ function PageView({ page }: { page: PageDetail }) {
 
   return (
     <div>
-      <header className="print:hidden flex items-center justify-between gap-2 px-3 py-1.5 text-sm max-md:sticky max-md:top-0 max-md:z-30 max-md:border-b max-md:border-neutral-200 max-md:bg-white/95 max-md:backdrop-blur sm:gap-4 md:px-4 md:py-2 dark:max-md:border-neutral-800 dark:max-md:bg-neutral-900/95">
-        <nav className="flex min-w-0 items-center gap-1 text-neutral-500">
-          <MenuButton />
-          {page.breadcrumb.map((b) => (
-            // On phones, only the parent page is shown, as a way back.
-            <span key={b.id} className={`min-w-0 items-center gap-1 ${b === page.breadcrumb[page.breadcrumb.length - 1] ? "flex" : "hidden md:flex"}`}>
-              <Link to={`/page/${b.id}`} className="truncate rounded px-1 hover:bg-neutral-100 dark:hover:bg-neutral-800">
-                {pageIcon(b.icon)} {pageTitle(b.title)}
-              </Link>
-              <ChevronRight size={14} className="shrink-0" />
+      {!hideChrome && (
+        <header className="print:hidden flex items-center justify-between gap-2 px-3 py-1.5 text-sm max-md:sticky max-md:top-0 max-md:z-30 max-md:border-b max-md:border-neutral-200 max-md:bg-white/95 max-md:backdrop-blur sm:gap-4 md:px-4 md:py-2 dark:max-md:border-neutral-800 dark:max-md:bg-neutral-900/95">
+          <nav className="flex min-w-0 items-center gap-1 text-neutral-500">
+            <MenuButton />
+            {page.breadcrumb.map((b) => (
+              // On phones, only the parent page is shown, as a way back.
+              <span key={b.id} className={`min-w-0 items-center gap-1 ${b === page.breadcrumb[page.breadcrumb.length - 1] ? "flex" : "hidden md:flex"}`}>
+                <Link to={`/page/${b.id}`} className="truncate rounded px-1 hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                  {pageIcon(b.icon)} {pageTitle(b.title)}
+                </Link>
+                <ChevronRight size={14} className="shrink-0" />
+              </span>
+            ))}
+            <span className="truncate px-1 text-neutral-800 dark:text-neutral-200">
+              {pageIcon(page.icon)} {pageTitle(title)}
             </span>
-          ))}
-          <span className="truncate px-1 text-neutral-800 dark:text-neutral-200">
-            {pageIcon(page.icon)} {pageTitle(title)}
-          </span>
-        </nav>
-        <div className="flex shrink-0 items-center gap-1">
-          <SyncStatus />
-          <EditedAt pageId={page.id} updatedAt={page.updatedAt} />
-          {hasComments && (
-            <Button
-              variant="ghost"
-              onClick={() => setCommentsOpen((o) => !o)}
-              title={t("comments.title")}
-              aria-label={t("comments.title")}
-              aria-pressed={commentsOpen}
-              data-comments-toggle
-            >
-              <MessageSquare size={16} />
-              {openThreads > 0 && <span className="text-xs tabular-nums text-neutral-500">{openThreads}</span>}
-            </Button>
-          )}
-          {page.kind !== "database" && (
-            <Button variant="ghost" onClick={() => setHistory(true)} title={t("history.title")} aria-label={t("history.title")}>
-              <History size={16} />
-            </Button>
-          )}
-          {!page.home && <FavoriteButton page={page} />}
-          <Button variant="ghost" onClick={(e) => setMenu(e.currentTarget)} title={t("page.options")} aria-label={t("page.options")}>
-            <MoreHorizontal size={16} />
-          </Button>
-          {!canManage && (
-            <span
-              title={pageRoleLabel(page.role)}
-              className="flex items-center gap-1 rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
-            >
-              <Lock size={12} /> <span className="hidden sm:inline">{pageRoleLabel(page.role)}</span>
-            </span>
-          )}
-          {canManage && !page.home && (
-            <>
-              <Button variant="ghost" onClick={() => setSharing(true)} aria-label={t("share.button")}>
-                <Share2 size={16} /> <span className="hidden sm:inline">{t("share.button")}</span>
+          </nav>
+          <div className="flex shrink-0 items-center gap-1">
+            <SyncStatus />
+            <EditedAt pageId={page.id} updatedAt={page.updatedAt} />
+            {hasComments && (
+              <Button
+                variant="ghost"
+                onClick={() => setCommentsOpen((o) => !o)}
+                title={t("comments.title")}
+                aria-label={t("comments.title")}
+                aria-pressed={commentsOpen}
+                data-comments-toggle
+              >
+                <MessageSquare size={16} />
+                {openThreads > 0 && <span className="text-xs tabular-nums text-neutral-500">{openThreads}</span>}
               </Button>
-              <Button variant="ghost" onClick={trash} title={t("page.trash")}>
-                <Trash2 size={16} />
+            )}
+            {page.kind !== "database" && (
+              <Button variant="ghost" onClick={() => setHistory(true)} title={t("history.title")} aria-label={t("history.title")}>
+                <History size={16} />
               </Button>
-            </>
-          )}
-        </div>
-      </header>
+            )}
+            {!page.home && <FavoriteButton page={page} />}
+            <Button variant="ghost" onClick={(e) => setMenu(e.currentTarget)} title={t("page.options")} aria-label={t("page.options")}>
+              <MoreHorizontal size={16} />
+            </Button>
+            {!canManage && (
+              <span
+                title={pageRoleLabel(page.role)}
+                className="flex items-center gap-1 rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+              >
+                <Lock size={12} /> <span className="hidden sm:inline">{pageRoleLabel(page.role)}</span>
+              </span>
+            )}
+            {canManage && !page.home && (
+              <>
+                <Button variant="ghost" onClick={() => setSharing(true)} aria-label={t("share.button")}>
+                  <Share2 size={16} /> <span className="hidden sm:inline">{t("share.button")}</span>
+                </Button>
+                <Button variant="ghost" onClick={trash} title={t("page.trash")}>
+                  <Trash2 size={16} />
+                </Button>
+              </>
+            )}
+          </div>
+        </header>
+      )}
 
-      {page.cover && <PageCover pageId={page.id} cover={page.cover} position={page.coverPosition} editable={canEdit} onChange={save} />}
+      {!hideChrome && page.cover && <PageCover pageId={page.id} cover={page.cover} position={page.coverPosition} editable={canEdit} onChange={save} />}
       <div
-        className={`mx-auto px-5 pb-24 ${page.cover ? "pt-6" : "pt-8 sm:pt-16"} sm:px-12 ${page.fullWidth ? "max-w-none sm:px-24" : page.kind === "database" ? "max-w-6xl" : "max-w-3xl"}`}
+        className={`mx-auto px-5 pb-24 ${hideChrome ? "pt-0" : page.cover ? "pt-6" : "pt-8 sm:pt-16"} sm:px-12 ${page.fullWidth ? "max-w-none sm:px-24" : page.kind === "database" ? "max-w-6xl" : "max-w-3xl"}`}
       >
-        <div className="flex flex-wrap items-end gap-1">
-          {!page.home && <IconPicker icon={page.icon} editable={canEdit} onChange={(icon) => save({ icon })} />}
-          {canEdit && !page.cover && <AddCoverButton pageId={page.id} onChange={save} />}
-        </div>
-        {page.home ? (
+        {!hideChrome && (
           <>
-            <h1 className="text-3xl font-bold sm:text-4xl">{greeting(user?.name ?? "")}</h1>
-            <p className="mt-2 text-sm text-neutral-500">{t("home.hint")}</p>
+            <div className="flex flex-wrap items-end gap-1">
+              {!page.home && <IconPicker icon={page.icon} editable={canEdit} onChange={(icon) => save({ icon })} />}
+              {canEdit && !page.cover && <AddCoverButton pageId={page.id} onChange={save} />}
+            </div>
+            {page.home ? (
+              <>
+                <h1 className="text-3xl font-bold sm:text-4xl">{greeting(user?.name ?? "")}</h1>
+                <p className="mt-2 text-sm text-neutral-500">{t("home.hint")}</p>
+              </>
+            ) : (
+              <textarea
+                ref={titleRef}
+                rows={1}
+                value={title}
+                readOnly={!canEdit}
+                onChange={(e) => onTitleChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    document.querySelector<HTMLElement>(".nootion-content")?.focus();
+                  }
+                }}
+                placeholder={page.template ? t("template.untitled") : t("common.untitled")}
+                aria-label={t("page.titleLabel")}
+                className="w-full resize-none overflow-hidden bg-transparent text-3xl font-bold outline-none placeholder:text-neutral-300 sm:text-4xl dark:placeholder:text-neutral-600"
+              />
+            )}
+            {page.template && <TemplateBanner page={page} canEdit={canEdit} />}
           </>
-        ) : (
-          <textarea
-            ref={titleRef}
-            rows={1}
-            value={title}
-            readOnly={!canEdit}
-            onChange={(e) => onTitleChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                document.querySelector<HTMLElement>(".nootion-content")?.focus();
-              }
-            }}
-            placeholder={page.template ? t("template.untitled") : t("common.untitled")}
-            aria-label={t("page.titleLabel")}
-            className="w-full resize-none overflow-hidden bg-transparent text-3xl font-bold sm:text-4xl outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-600"
-          />
         )}
-        {page.template && <TemplateBanner page={page} canEdit={canEdit} />}
         {page.kind === "row" && page.parentId && <RowProperties databaseId={page.parentId} rowId={page.id} />}
         {offerTemplates && empty && <TemplatePicker page={page} />}
         <div className="mt-4">

@@ -24,10 +24,25 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
     return { users: list };
   });
 
+  // The full people directory is available to every signed-in user for profile discovery.
+  app.get("/directory", async (req) => {
+    requireUser(req);
+    const list: UserDirectoryEntry[] = app.db
+      .select({ id: users.id, name: users.name, email: users.email, avatar: users.avatar })
+      .from(users)
+      .where(eq(users.disabled, false))
+      .orderBy(users.name)
+      .all()
+      .map(({ avatar, ...u }) => ({ ...u, avatarUrl: avatarUrl({ id: u.id, avatar }) }));
+    return { users: list };
+  });
+
   // Someone the user doesn't work with yet, found by their exact e-mail address (to share a page or a space with them).
   app.get<{ Querystring: { email?: string } }>("/lookup", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req) => {
     requireUser(req);
-    const email = String(req.query.email ?? "").trim().toLowerCase();
+    const email = String(req.query.email ?? "")
+      .trim()
+      .toLowerCase();
     const found = email
       ? app.db
           .select({ id: users.id, name: users.name, email: users.email, avatar: users.avatar, disabled: users.disabled })
