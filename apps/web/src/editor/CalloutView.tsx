@@ -7,9 +7,10 @@ import { pageIcon } from "../lib/icons";
 export function CalloutView({ node, updateAttributes }: NodeViewProps) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const emoji = typeof node.attrs.emoji === "string" ? node.attrs.emoji : "";
+  const color = typeof node.attrs.color === "string" ? node.attrs.color : undefined;
 
   return (
-    <NodeViewWrapper as="div" data-callout="" data-emoji={emoji} className="callout">
+    <NodeViewWrapper as="div" data-callout="" data-emoji={emoji} data-color={color} className="callout">
       <button
         type="button"
         contentEditable={false}
