@@ -281,6 +281,13 @@
       "when": 1794741242896,
       "tag": "0039_fast_weapon_omega",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1794745073210,
+      "tag": "0040_cheerful_glorian",
+      "breakpoints": true
     }
   ]
 }

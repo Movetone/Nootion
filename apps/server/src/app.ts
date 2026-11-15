@@ -51,6 +51,7 @@ import { createLiveEvents, liveEventRoutes, type LiveEvents } from "./events.js"
 import { iconRoutes } from "./routes/icons.js";
 import { libraryRoutes } from "./routes/library.js";
 import { userRoutes } from "./routes/users.js";
+import { profileRoutes } from "./routes/profiles.js";
 import { publicRoutes } from "./routes/public.js";
 import { pluginAdminRoutes, pluginRoutes } from "./routes/plugins.js";
 import { exportRoutes } from "./routes/export.js";
@@ -356,6 +357,7 @@ export async function buildApp(opts: { db: Db; config: Config; logger?: boolean;
   await app.register(oauthDiscoveryRoutes);
   await app.register(mcpRoutes);
   await app.register(userRoutes, { prefix: "/api/users" });
+  await app.register(profileRoutes, { prefix: "/api/profiles" });
   await app.register(publicRoutes, { prefix: "/api/public" });
   await app.register(attachmentRoutes, { prefix: "/api" });
   await app.register(databaseRoutes, { prefix: "/api/databases" });

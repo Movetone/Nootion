@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { Check, Download, Image as ImageIcon, Maximize2, MessageSquare, MoreHorizontal, Paperclip, RotateCcw, X } from "lucide-react";
 import { intlLocale, t, type CommentAttachment, type CommentInfo, type CommentThread, type UserDirectoryEntry } from "@nootion/shared";
@@ -191,9 +192,13 @@ function Comment({ comment, pageId, threadId, canComment }: { comment: CommentIn
   const mine = canComment && comment.authorId === user?.id;
   return (
     <div className="group text-sm" data-comment={comment.id}>
-      <div className="mb-0.5 flex items-center gap-2">
-        <Avatar name={comment.authorName} url={comment.authorAvatarUrl} size={20} />
-        <span className="font-medium">{comment.authorName}</span>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <Link to={`/profile/${comment.authorId}`} className="rounded-full" title={`Open ${comment.authorName}'s profile`}>
+          <Avatar name={comment.authorName} url={comment.authorAvatarUrl} size={20} />
+        </Link>
+        <Link to={`/profile/${comment.authorId}`} className="font-medium hover:underline">
+          {comment.authorName}
+        </Link>
         <span className="text-xs text-neutral-400" title={new Date(comment.createdAt).toLocaleString(intlLocale())}>
           {when(comment.createdAt)}
           {comment.editedAt && ` · ${t("comments.edited")}`}

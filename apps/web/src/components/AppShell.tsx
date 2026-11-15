@@ -132,14 +132,15 @@ export function AppShell() {
 
   const sidebar = (
     <>
-      <Link
-        to="/account"
-        title={t("account.title")}
-        className="m-2 flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/60"
-      >
-        <Avatar name={user?.name ?? ""} url={user?.avatarUrl} size={26} />
-        <span className="truncate text-sm font-semibold">{user?.name}</span>
-      </Link>
+      <div className="m-2 flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/60">
+        <Link to={`/profile/${user?.id ?? ""}`} title={user?.name} className="flex min-w-0 flex-1 items-center gap-2">
+          <Avatar name={user?.name ?? ""} url={user?.avatarUrl} size={26} />
+          <span className="truncate text-sm font-semibold">{user?.name}</span>
+        </Link>
+        <Link to="/account" title={t("account.title")} aria-label={t("account.title")} className="rounded p-1 text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-700">
+          <Settings size={15} />
+        </Link>
+      </div>
       <SyncStatus className="mx-3 mb-2 w-fit" />
       <button
         onClick={() => setSearching(true)}
