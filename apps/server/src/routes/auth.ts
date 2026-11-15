@@ -81,6 +81,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const set: Partial<typeof users.$inferInsert> = {};
     if (input.name !== undefined) set.name = input.name;
     if (input.locale !== undefined) set.locale = input.locale;
+    if (input.status !== undefined) set.status = input.status;
     if (changesEmail) set.email = input.email;
     if (input.newPassword) set.passwordHash = await hashPassword(input.newPassword);
     const updated = Object.keys(set).length ? app.db.update(users).set(set).where(eq(users.id, user.id)).returning().get() : user;

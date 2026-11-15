@@ -19,6 +19,8 @@ export const users = sqliteTable(
     disabled: integer("disabled", { mode: "boolean" }).notNull().default(false),
     // File name of the profile picture in <data>/avatars, or null.
     avatar: text("avatar"),
+    // A short, user-editable line shown under the display name on the profile.
+    status: text("status").notNull().default(""),
     // Interface language ("en", "fr"…).
     locale: text("locale").notNull().default("en"),
     // The user's home page (a page of their personal workspace), created on first visit.
