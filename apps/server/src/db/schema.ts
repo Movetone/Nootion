@@ -50,6 +50,80 @@ export const users = sqliteTable(
   (t) => [uniqueIndex("users_email_unique").on(t.email)],
 );
 
+export const globalGroups = sqliteTable(
+  "global_groups",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    icon: text("icon"),
+    color: text("color"),
+    pageId: text("page_id"),
+    position: integer("position").notNull().default(0),
+    archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("global_groups_position_idx").on(t.position)],
+);
+
+export const globalGroupRoles = sqliteTable(
+  "global_group_roles",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => globalGroups.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("global_group_roles_group_idx").on(t.groupId)],
+);
+
+export const globalGroupMembers = sqliteTable(
+  "global_group_members",
+  {
+    groupId: text("group_id")
+      .notNull()
+      .references(() => globalGroups.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.userId] }), index("global_group_members_user_idx").on(t.userId)],
+);
+
+export const globalGroupMemberRoles = sqliteTable(
+  "global_group_member_roles",
+  {
+    groupId: text("group_id").notNull(),
+    userId: text("user_id").notNull(),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => globalGroupRoles.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.groupId, t.userId, t.roleId] }), index("global_group_member_roles_user_idx").on(t.userId)],
+);
+
+export const globalGroupAudit = sqliteTable(
+  "global_group_audit",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id"),
+    actorId: text("actor_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    targetUserId: text("target_user_id"),
+    roleId: text("role_id"),
+    details: text("details", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (t) => [index("global_group_audit_group_idx").on(t.groupId, t.createdAt)],
+);
+
 /** A password checked, waiting for the second factor: the cookie that finishes the sign-in. */
 export const loginChallenges = sqliteTable("login_challenges", {
   tokenHash: text("token_hash").primaryKey(),

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { toPublicUser } from "../users.js";
-import { pages, users, workspaces } from "../db/schema.js";
+import { pages, users, workspaces, globalGroupMemberRoles, globalGroupMembers, globalGroupRoles, globalGroups } from "../db/schema.js";
 import { notFound, requireUser } from "../http.js";
 import { nextPosition, toSummary } from "../pages.js";
 
@@ -48,6 +48,26 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
     return page;
   }
 
+  function profileGroups(userId: string) {
+    return db
+      .select({ id: globalGroups.id, name: globalGroups.name, description: globalGroups.description, icon: globalGroups.icon, color: globalGroups.color })
+      .from(globalGroupMembers)
+      .innerJoin(globalGroups, eq(globalGroups.id, globalGroupMembers.groupId))
+      .where(and(eq(globalGroupMembers.userId, userId), isNull(globalGroups.archivedAt)))
+      .orderBy(asc(globalGroupMembers.position), asc(globalGroups.position))
+      .all()
+      .map((group) => ({
+        ...group,
+        roles: db
+          .select({ id: globalGroupRoles.id, name: globalGroupRoles.name })
+          .from(globalGroupMemberRoles)
+          .innerJoin(globalGroupRoles, eq(globalGroupRoles.id, globalGroupMemberRoles.roleId))
+          .where(and(eq(globalGroupMemberRoles.groupId, group.id), eq(globalGroupMemberRoles.userId, userId)))
+          .orderBy(asc(globalGroupMemberRoles.position), asc(globalGroupRoles.position))
+          .all(),
+      }));
+  }
+
   app.get<{ Params: { id: string } }>("/:id", async (req) => {
     requireUser(req);
     const user = db
@@ -57,6 +77,6 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
       .get();
     if (!user) throw notFound();
     const page = profilePage(user);
-    return { profile: { user: toPublicUser(user), page: toSummary(page) } };
+    return { profile: { user: toPublicUser(user), page: toSummary(page), groups: profileGroups(user.id) } };
   });
 };
