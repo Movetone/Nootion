@@ -6,7 +6,7 @@ import { AVATAR_MAX_BYTES, deleteMeInput, loginInput, t, updateMeInput } from "@
 import { and, count, eq, inArray, ne } from "drizzle-orm";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "../auth/password.js";
 import { deleteSession, deleteUserSessions, SESSION_COOKIE } from "../auth/sessions.js";
-import { users, workspaceMembers, workspaces } from "../db/schema.js";
+import { users, pages, workspaceMembers, workspaces } from "../db/schema.js";
 import { HttpError, parseBody, requireUser } from "../http.js";
 import { avatarsDir, toPublicUser } from "../users.js";
 import { imageExtension } from "../images.js";
@@ -68,7 +68,14 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         throw new HttpError(400, "bad_password", t("error.badCurrentPassword"));
       }
     }
-    if (changesEmail && app.db.select({ id: users.id }).from(users).where(and(eq(users.email, input.email!), ne(users.id, user.id))).get()) {
+    if (
+      changesEmail &&
+      app.db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.email, input.email!), ne(users.id, user.id)))
+        .get()
+    ) {
       throw new HttpError(409, "email_taken", t("error.emailUsed"));
     }
     const set: Partial<typeof users.$inferInsert> = {};
@@ -77,6 +84,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     if (changesEmail) set.email = input.email;
     if (input.newPassword) set.passwordHash = await hashPassword(input.newPassword);
     const updated = Object.keys(set).length ? app.db.update(users).set(set).where(eq(users.id, user.id)).returning().get() : user;
+    if (input.name !== undefined && input.name !== user.name && user.profilePageId) {
+      app.db.update(pages).set({ title: input.name, updatedAt: new Date(), updatedBy: user.id }).where(eq(pages.id, user.profilePageId)).run();
+    }
     if (input.newPassword) {
       // Signs out every other device; this one gets a fresh session.
       deleteUserSessions(app.db, user.id);
@@ -124,7 +134,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const db = app.db;
     const others = db.select({ n: count() }).from(users).where(ne(users.id, user.id)).get()?.n ?? 0;
     if (user.role === "admin" && others > 0) {
-      const otherAdmins = db.select({ n: count() }).from(users).where(and(eq(users.role, "admin"), eq(users.disabled, false), ne(users.id, user.id))).get()?.n ?? 0;
+      const otherAdmins =
+        db
+          .select({ n: count() })
+          .from(users)
+          .where(and(eq(users.role, "admin"), eq(users.disabled, false), ne(users.id, user.id)))
+          .get()?.n ?? 0;
       if (otherAdmins === 0) throw new HttpError(409, "last_admin", t("error.lastAdminDelete"));
     }
 

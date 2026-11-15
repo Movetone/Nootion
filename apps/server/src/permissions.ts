@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { atLeast, maxRole, WORKSPACE_ROLE_TO_PAGE_ROLE, type PageRole, type WorkspaceRole } from "@nootion/shared";
 import type { Db } from "./db/index.js";
-import { pagePermissions, workspaceMembers } from "./db/schema.js";
+import { pagePermissions, users, workspaceMembers } from "./db/schema.js";
 import { notFound } from "./http.js";
 import { getPageMeta } from "./pages.js";
 import { currentTokenScope, scopeAllows } from "./api-tokens.js";
@@ -53,12 +53,26 @@ export function getWorkspaceRole(db: Db, userId: string, workspaceId: string): W
 
 export function roleFromChain(db: Db, userId: string, chain: ChainEntry[]): PageRole | null {
   if (chain.length === 0 || !scopeAllows(chain[0].workspaceId)) return null;
+  const profileOwner = db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.profilePageId, chain[0].id), eq(users.disabled, false)))
+    .get();
+  if (profileOwner) return profileOwner.id === userId ? "full" : "viewer";
   const wsRole = getWorkspaceRole(db, userId, chain[0].workspaceId);
   let role: PageRole | null = wsRole ? WORKSPACE_ROLE_TO_PAGE_ROLE[wsRole] : null;
   const shares = db
     .select({ role: pagePermissions.role })
     .from(pagePermissions)
-    .where(and(eq(pagePermissions.userId, userId), inArray(pagePermissions.pageId, chain.map((c) => c.id))))
+    .where(
+      and(
+        eq(pagePermissions.userId, userId),
+        inArray(
+          pagePermissions.pageId,
+          chain.map((c) => c.id),
+        ),
+      ),
+    )
     .all();
   for (const s of shares) role = maxRole(role, s.role);
   if (role && currentTokenScope()?.readOnly) return "viewer";

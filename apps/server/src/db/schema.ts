@@ -25,6 +25,8 @@ export const users = sqliteTable(
     homePageId: text("home_page_id"),
     // The page quick notes land in (in their personal workspace), created on first capture.
     inboxPageId: text("inbox_page_id"),
+    // The full profile page shown to every signed-in user, created lazily on first profile view.
+    profilePageId: text("profile_page_id").unique(),
     // E-mails the user turned off, by kind (EmailPrefs); missing kinds are on.
     emailPrefs: text("email_prefs", { mode: "json" }).$type<Record<string, boolean>>().notNull().default({}),
     // The account at the SSO provider (the "sub" of its tokens), once linked.

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { PageDetail, PageSummary, UserDirectoryEntry, WorkspaceSummary } from "@nootion/shared";
+import type { PageDetail, PageSummary, PublicUser, UserDirectoryEntry, WorkspaceSummary } from "@nootion/shared";
 import { api } from "./api";
 import { useOfflineQueue, withQueuedPage, withQueuedPages } from "./offline";
 
@@ -8,6 +8,7 @@ export const keys = {
   pages: (workspaceId: string) => ["pages", workspaceId] as const,
   shared: ["shared"] as const,
   page: (id: string) => ["page", id] as const,
+  profile: (id: string) => ["profile", id] as const,
   users: ["users"] as const,
   favorites: ["favorites"] as const,
 };
@@ -41,6 +42,14 @@ export function usePage(id: string) {
     queryFn: async () => (await api<{ page: PageDetail }>(`/pages/${id}`)).page,
     // Title or icon changed offline shows until the server has it.
     select: pending ? withQueuedPage : undefined,
+    enabled: !!id,
+  });
+}
+
+export function useProfile(id: string) {
+  return useQuery({
+    queryKey: keys.profile(id),
+    queryFn: async () => (await api<{ profile: { user: PublicUser; page: PageSummary } }>(`/profiles/${id}`)).profile,
     enabled: !!id,
   });
 }

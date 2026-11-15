@@ -14,6 +14,7 @@ import { RemindersPage } from "./pages/RemindersPage";
 import { CapturePage } from "./components/QuickCapture";
 import { PublicPage } from "./pages/PublicPage";
 import { AccountPage } from "./pages/AccountPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { OauthAuthorizePage } from "./pages/OauthAuthorizePage";
 import { PublicFormPage } from "./pages/PublicFormPage";
 import { t } from "@nootion/shared";
@@ -92,6 +93,7 @@ function PrivateApp() {
         <Route path="/reminders" element={<RemindersPage />} />
         <Route path="/capture" element={<CapturePage />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/profile/:id" element={<ProfilePage />} />
         <Route path="/sync" element={<SyncPage />} />
         {user.role === "admin" && <Route path="/admin" element={<AdminPage />} />}
       </Route>
