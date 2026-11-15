@@ -7,8 +7,8 @@ import { OPTION_COLORS, type OptionColor } from "@nootion/shared";
 import { randomId } from "../lib/browser";
 
 /** A block's color, as in Notion: its text ("red") or its background ("red-bg"). */
-export type BlockColor = OptionColor | `${OptionColor}-bg`;
-export const BLOCK_COLORS: readonly BlockColor[] = [...OPTION_COLORS, ...OPTION_COLORS.map((c) => `${c}-bg` as const)];
+export type BlockColor = OptionColor | `${OptionColor}-bg` | "transparent";
+export const BLOCK_COLORS: readonly BlockColor[] = [...OPTION_COLORS, ...OPTION_COLORS.map((c) => `${c}-bg` as const), "transparent"];
 
 /** Blocks that take a color. */
 const COLORED = ["paragraph", "heading", "listItem", "taskItem", "blockquote", "callout", "details"];
@@ -68,19 +68,6 @@ export function setBlockColor(editor: Editor, pos: number, color: BlockColor | n
       const node = tr.doc.nodeAt(pos);
       if (!node || !canColor(node)) return false;
       tr.setNodeMarkup(pos, undefined, { ...node.attrs, color });
-      return true;
-    })
-    .run();
-}
-
-export function setCalloutAttrs(editor: Editor, pos: number, patch: { emoji?: string; transparent?: boolean }) {
-  editor
-    .chain()
-    .focus()
-    .command(({ tr }) => {
-      const node = tr.doc.nodeAt(pos);
-      if (!node || node.type.name !== "callout") return false;
-      tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...patch });
       return true;
     })
     .run();

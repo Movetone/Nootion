@@ -406,12 +406,21 @@ body {
 .nootion-content .callout[data-emoji=""] {
   @apply pl-4;
 }
-.nootion-content .callout[data-transparent="true"] {
+.nootion-content .callout[data-color="transparent"] {
   @apply border border-neutral-200 bg-transparent dark:border-neutral-700 dark:bg-transparent;
+}
+.nootion-content .callout-emoji {
+  @apply absolute top-4 left-4 z-10 flex h-7 w-7 items-center justify-center rounded text-xl leading-7 hover:bg-black/5 dark:hover:bg-white/10;
+}
+.nootion-content .callout-content {
+  @apply mt-0;
 }
 .nootion-content .callout::before {
   content: attr(data-emoji);
   @apply absolute top-4 left-4 text-xl leading-7;
+}
+.nootion-content .callout[data-node-view-wrapper]::before {
+  content: none;
 }
 .nootion-content .callout > :first-child {
   @apply mt-0;
