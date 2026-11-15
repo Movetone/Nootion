@@ -1,0 +1,20 @@
+{
+  "id": "interactive_iframe",
+  "name": { "en": "Interactive iframe", "fr": "Iframe interactif" },
+  "version": "1.0.0",
+  "description": {
+    "en": "Open any HTTP or HTTPS page inside an interactive iframe. Command \"/iframe\".",
+    "fr": "Ouvre toute page HTTP ou HTTPS dans un iframe interactif. Commande « /iframe »."
+  },
+  "author": "Movetone",
+  "client": "client.js",
+  "blocks": [
+    {
+      "id": "iframe",
+      "title": "Interactive iframe",
+      "description": { "en": "Any interactive web page", "fr": "Toute page web interactive" },
+      "icon": "🖼️",
+      "keywords": "iframe web page website interactive site embed frame url"
+    }
+  ]
+}
