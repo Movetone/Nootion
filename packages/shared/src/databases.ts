@@ -238,6 +238,10 @@ export interface ViewConfig {
   calendarMode?: "month" | "week";
   /** Timeline: width of a day, from days to months. */
   timelineScale?: "day" | "week" | "month";
+  /** Self-relation used to display nested sub-items in table/list views. */
+  subItemsPropertyId?: string;
+  /** Self-relation used for Notion-style dependencies. */
+  dependenciesPropertyId?: string;
   /** Deprecated Gallery preview toggle kept for old saved views. */
   showPreview?: boolean;
   /** Gallery: shows a preview image on the card (default cover, then first page image). */
@@ -270,6 +274,8 @@ export const viewConfigSchema = z
     dateProperty: z.string().min(1).max(64).nullable().optional(),
     calendarMode: z.enum(["month", "week"]).optional(),
     timelineScale: z.enum(["day", "week", "month"]).optional(),
+    subItemsPropertyId: z.string().min(1).max(64).optional(),
+    dependenciesPropertyId: z.string().min(1).max(64).optional(),
     showPreview: z.boolean().optional(),
     galleryPreview: z.enum(["cover", "content", "files", "none"]).optional(),
     galleryPreviewPropertyId: z.string().min(1).optional(),
@@ -302,6 +308,35 @@ export interface DatabaseRow {
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
+}
+
+/**
+ * Orders rows as a Notion-style outline using a self-relation whose values point from a parent to its children.
+ * Missing targets and cycles are left visible once, rather than hiding rows.
+ */
+export function nestRows(rows: DatabaseRow[], subItemsPropertyId?: string): { row: DatabaseRow; depth: number }[] {
+  if (!subItemsPropertyId) return rows.map((row) => ({ row, depth: 0 }));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const children = new Map<string, string[]>();
+  const childIds = new Set<string>();
+  for (const row of rows) {
+    const ids = row.values[subItemsPropertyId];
+    if (!Array.isArray(ids)) continue;
+    const valid = ids.filter((id): id is string => typeof id === "string" && byId.has(id));
+    if (valid.length) children.set(row.id, valid);
+    valid.forEach((id) => childIds.add(id));
+  }
+  const output: { row: DatabaseRow; depth: number }[] = [];
+  const visit = (id: string, depth: number, path: Set<string>) => {
+    const row = byId.get(id);
+    if (!row || path.has(id)) return;
+    output.push({ row, depth });
+    const next = new Set(path).add(id);
+    for (const child of children.get(id) ?? []) visit(child, depth + 1, next);
+  };
+  for (const row of rows) if (!childIds.has(row.id)) visit(row.id, 0, new Set());
+  for (const row of rows) if (!output.some((entry) => entry.row.id === row.id)) visit(row.id, 0, new Set());
+  return output;
 }
 
 export interface DatabaseData {

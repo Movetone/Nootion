@@ -9,6 +9,7 @@ import {
   groupRows,
   initialValues,
   moveToGroup,
+  nestRows,
   rowDays,
   shiftDate,
   type DatabaseProperty,
@@ -212,6 +213,21 @@ describe("filters, sorts and groups", () => {
       ],
     };
     expect(initialValues(ctx, config, { prop: status, key: "s1" })).toEqual({ owner: ["u1"], paid: false, status: "s1" });
+  });
+});
+
+describe("sub-items", () => {
+  it("orders a self-relation as a nested outline and keeps cycles visible", () => {
+    const a = row("A", { children: [] });
+    const b = row("B", { children: [a.id] });
+    const c = row("C", { children: [] });
+    a.values.children = [b.id];
+    c.values.children = [c.id];
+    expect(nestRows([a, b, c], "children").map(({ row: r, depth }) => [r.title, depth])).toEqual([
+      ["A", 0],
+      ["B", 1],
+      ["C", 0],
+    ]);
   });
 });
 

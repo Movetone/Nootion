@@ -344,6 +344,7 @@ export function ViewBar({
               </div>
             </div>
           )}
+          {actions && <TaskSettings data={data} view={view} actions={actions} save={save} />}
           <div className="px-2 py-1 text-xs text-neutral-500">{t("view.shownProperties")}</div>
           <div className="max-h-80 overflow-y-auto">
             {orderedColumns(data.properties, config.columns)
@@ -363,6 +364,48 @@ export function ViewBar({
           </div>
         </Popover>
       )}
+    </div>
+  );
+}
+
+function TaskSettings({
+  data,
+  view,
+  actions,
+  save,
+}: {
+  data: DatabaseData;
+  view: DatabaseViewInfo;
+  actions: Actions;
+  save: (patch: Partial<ViewConfig>) => void;
+}) {
+  const selfRelation = (id: string | undefined) => data.properties.find((p) => p.id === id && p.type === "relation" && p.config.databaseId === data.id);
+  const enable = async (kind: "subItems" | "dependencies", checked: boolean) => {
+    const key = kind === "subItems" ? "subItemsPropertyId" : "dependenciesPropertyId";
+    if (!checked) {
+      save({ [key]: undefined });
+      return;
+    }
+    const name = kind === "subItems" ? "Sub-items" : "Dependencies";
+    const existing = selfRelation(view.config[key]) ?? data.properties.find((p) => p.type === "relation" && p.config.databaseId === data.id && p.name === name);
+    if (existing) {
+      save({ [key]: existing.id });
+      return;
+    }
+    const { property } = await actions.addProperty.mutateAsync({ name, type: "relation", config: { databaseId: data.id }, twoWay: true });
+    save({ [key]: property.id });
+  };
+  return (
+    <div className="border-b border-neutral-200 px-2 py-2 dark:border-neutral-700">
+      <div className="mb-1 text-xs text-neutral-500">Task settings</div>
+      <label className="flex cursor-pointer items-center gap-2 py-1 text-sm">
+        <input type="checkbox" className="accent-blue-600" checked={!!selfRelation(view.config.subItemsPropertyId)} onChange={(e) => void enable("subItems", e.target.checked)} />
+        Show sub-items
+      </label>
+      <label className="flex cursor-pointer items-center gap-2 py-1 text-sm">
+        <input type="checkbox" className="accent-blue-600" checked={!!selfRelation(view.config.dependenciesPropertyId)} onChange={(e) => void enable("dependencies", e.target.checked)} />
+        Enable dependencies
+      </label>
     </div>
   );
 }

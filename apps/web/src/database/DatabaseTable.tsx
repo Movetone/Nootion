@@ -25,6 +25,7 @@ import {
   type PropertyType,
   type SelectOption,
   type ViewColumn,
+  nestRows,
 } from "@nootion/shared";
 import { Cell } from "./Cell";
 import { PropertyMenu } from "./PropertyMenu";
@@ -169,6 +170,7 @@ export function TableView({
   // Rows keep a manual order; a sorted view shows its own.
   const sorted = (view?.config.sorts ?? []).length > 0;
   const groupOf = useMemo(() => new Map((groups ?? []).flatMap((g) => g.rows.map((r) => [r.id, g.key] as const))), [groups]);
+  const nestedRows = useMemo(() => nestRows(rows, view?.config.subItemsPropertyId), [rows, view?.config.subItemsPropertyId]);
 
   /** The rows a menu acts on: the selection when the row is part of it, else the row alone. */
   const menuRows = (rowId: string) =>
@@ -271,7 +273,7 @@ export function TableView({
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const gutter = editable ? "w-8 shrink-0" : "w-0 shrink-0";
 
-  const renderRow = (row: DatabaseRow) => (
+  const renderRow = ({ row, depth = 0 }: { row: DatabaseRow; depth?: number }) => (
     <div
       key={row.id}
       role="row"
@@ -361,7 +363,7 @@ export function TableView({
               <span className="flex h-[34px] shrink-0 items-center pl-2 leading-none [&_img]:h-4 [&_img]:w-4" data-row-icon>
                 {pageIcon(row.icon)}
               </span>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1" style={{ paddingLeft: depth * 20 }}>
                 <Cell
                   prop={c.prop}
                   value={c.prop.type === "title" ? row.title : (row.values[c.prop.id] ?? null)}
@@ -565,7 +567,7 @@ export function TableView({
                       <span className="text-xs text-neutral-400">{g.rows.length}</span>
                     </button>
                   </div>
-                  {open && shownRows.map(renderRow)}
+                  {open && shownRows.map((row) => renderRow({ row }))}
                   {open && cut && (
                     <ShowMoreRows shown={limit} total={countGroupRows(groups, (x) => !collapsed.has(x.key))} onMore={more} className="sticky left-0" />
                   )}
@@ -584,8 +586,8 @@ export function TableView({
             })
           ) : (
             <>
-              {(rows.length > limit ? rows.slice(0, limit) : rows).map(renderRow)}
-              <ShowMoreRows shown={Math.min(limit, rows.length)} total={rows.length} onMore={more} className="sticky left-0" />
+              {(nestedRows.length > limit ? nestedRows.slice(0, limit) : nestedRows).map(renderRow)}
+              <ShowMoreRows shown={Math.min(limit, nestedRows.length)} total={nestedRows.length} onMore={more} className="sticky left-0" />
               {renderCalcs(rows)}
             </>
           )}
