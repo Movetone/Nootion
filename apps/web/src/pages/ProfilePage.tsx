@@ -5,6 +5,7 @@ import { AddCoverButton, PageCover } from "../components/PageCover";
 import { api } from "../lib/api";
 import { keys, usePage, useProfile } from "../lib/queries";
 import { PagePage } from "./PagePage";
+import { MobileBar } from "../components/SidebarLayout";
 
 export function ProfilePage() {
   const { id = "" } = useParams();
@@ -28,7 +29,9 @@ export function ProfileView({ id }: { id: string }) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-8 sm:px-8 sm:pb-12">
+    <>
+      <MobileBar />
+      <div className="mx-auto max-w-4xl px-5 pb-8 sm:px-8 sm:pb-12">
       <header className="mb-8 overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900/40">
         {detail?.cover ? (
           <PageCover pageId={page.id} cover={detail.cover} position={detail.coverPosition} editable={canEditCover} onChange={saveCover} />
@@ -64,7 +67,8 @@ export function ProfileView({ id }: { id: string }) {
           )}
         </div>
       </header>
-      <PagePage id={page.id} hideChrome />
-    </div>
+        <PagePage id={page.id} hideChrome />
+      </div>
+    </>
   );
 }

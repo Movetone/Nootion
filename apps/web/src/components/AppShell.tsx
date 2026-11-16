@@ -65,9 +65,11 @@ export function AppShell() {
   const [searching, setSearching] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const touch = useIsTouch();
-  // Page routes have their own editor header. Home is the user's profile and needs the mobile drawer bar too.
+  // Page and profile routes own their mobile header; ProfileView renders it for both / and /profile/:id.
   const onPageRoute = useMatch("/page/:id");
-  const onPage = onPageRoute;
+  const onHome = useMatch({ path: "/", end: true });
+  const onProfile = useMatch("/profile/:id");
+  const onPage = onPageRoute || onHome || onProfile;
   useSearchShortcut(useCallback(() => setSearching(true), []));
   useCaptureShortcut(useCallback(() => setCapturing(true), []));
   // "Capture" from the installed app's icon menu opens "/?capture".
