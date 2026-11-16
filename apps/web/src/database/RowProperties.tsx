@@ -8,7 +8,7 @@ import { Cell } from "./Cell";
 import { PropertyIcon } from "./icons";
 import { newOption } from "./OptionPicker";
 import { Popover } from "./Popover";
-import { AddPropertyForm } from "./AddPropertyForm";
+import { DatabasePropertyPicker } from "./DatabasePropertyPicker";
 import { PropertyMenu } from "./PropertyMenu";
 import { t, type PropertyType } from "@nootion/shared";
 
@@ -45,9 +45,13 @@ export function RowProperties({ databaseId, rowId }: { databaseId: string; rowId
     onSettled: () => qc.invalidateQueries({ queryKey: ["database"] }),
   });
 
-  const addProperty = async (name: string, type: PropertyType) => {
-    await api<{ property: DatabaseProperty }>(`/databases/${databaseId}/properties`, { method: "POST", body: { name, type, config: {} } });
+  const addProperty = async (input: { name: string; type: PropertyType; config?: DatabaseProperty["config"]; twoWay?: boolean }) => {
+    const anchor = adding;
+    const res = await api<{ property: DatabaseProperty }>(`/databases/${databaseId}/properties`, { method: "POST", body: { config: {}, ...input } });
+    setAdding(null);
+    if (anchor && (input.type === "rollup" || input.type === "formula")) setPropertyMenu({ prop: res.property, anchor });
     await Promise.all([qc.invalidateQueries({ queryKey: key }), qc.invalidateQueries({ queryKey: ["database", databaseId] })]);
+    return res.property;
   };
 
   const updateProperty = async (propId: string, body: { name?: string; type?: PropertyType; config?: DatabaseProperty["config"]; position?: number }) => {
@@ -152,8 +156,8 @@ export function RowProperties({ databaseId, rowId }: { databaseId: string; rowId
             + {t("table.addProperty")}
           </button>
           {adding && (
-            <Popover anchor={adding} onClose={() => setAdding(null)} width={240}>
-              <AddPropertyForm existingNames={properties.map((p) => p.name)} onCreate={addProperty} onClose={() => setAdding(null)} />
+            <Popover anchor={adding} onClose={() => setAdding(null)} width={280}>
+              <DatabasePropertyPicker data={{ id: databaseId, title: "", properties }} onCreate={addProperty} />
             </Popover>
           )}
           {propertyMenu && (
