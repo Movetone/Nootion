@@ -65,11 +65,9 @@ export function AppShell() {
   const [searching, setSearching] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const touch = useIsTouch();
-  // Pages have their own header, with the menu button.
-  // Pages (and the home page) have their own header with the menu button.
+  // Page routes have their own editor header. Home is the user's profile and needs the mobile drawer bar too.
   const onPageRoute = useMatch("/page/:id");
-  const onHome = useMatch({ path: "/", end: true });
-  const onPage = onPageRoute || onHome;
+  const onPage = onPageRoute;
   useSearchShortcut(useCallback(() => setSearching(true), []));
   useCaptureShortcut(useCallback(() => setCapturing(true), []));
   // "Capture" from the installed app's icon menu opens "/?capture".
