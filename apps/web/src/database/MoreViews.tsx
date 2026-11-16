@@ -137,15 +137,31 @@ export function GalleryView(props: MoreViewProps) {
   const { rows, editable, rowHref, view, fileUrl } = props;
   const navigate = useNavigate();
   const add = useAddRow(props);
-  const preview = view.config.showPreview !== false;
+  const previewSource = view.config.galleryPreview ?? (view.config.showPreview === false ? "none" : "cover");
+  const preview = previewSource !== "none";
   const size = view.config.cardSize ?? "medium";
+  const imageFit = view.config.galleryImageFit === "fit" ? "contain" : "cover";
+  const ratio = view.config.galleryImageRatio ?? "wide";
+  const showName = view.config.galleryShowName !== false;
   const { limit, more } = useShownRows(`${props.data.id}|${view.id}`, 60);
   // Files of a public page go through its link.
   const coverUrl = (cover: string) => {
     const m = /^\/api\/attachments\/(.+)$/.exec(cover);
     return m && fileUrl ? fileUrl(m[1]!) : cover;
   };
-  const coverBox = "aspect-[16/9]";
+  const previewValue = (row: (typeof rows)[number]) => {
+    if (previewSource === "content") return row.firstImage ?? null;
+    if (previewSource === "files") {
+      const property = props.data.properties.find((p) => p.id === view.config.galleryPreviewPropertyId && p.type === "file")
+        ?? props.data.properties.find((p) => p.type === "file");
+      const files = property ? row.values[property.id] : null;
+      return Array.isArray(files) && files.length > 0 && typeof files[0] === "object" && files[0] && "id" in files[0]
+        ? `/api/attachments/${(files[0] as { id: string }).id}`
+        : null;
+    }
+    return row.cover ?? row.firstImage ?? null;
+  };
+  const coverBox = ratio === "square" ? "aspect-square" : ratio === "landscape" ? "aspect-[4/3]" : "aspect-[16/9]";
   return (
     <div
       className="grid gap-3 text-sm"
@@ -161,8 +177,8 @@ export function GalleryView(props: MoreViewProps) {
         >
           {preview && (
             <div className={`${coverBox} w-full shrink-0 overflow-hidden border-b border-neutral-100 bg-neutral-50 dark:border-neutral-700/60 dark:bg-neutral-900/40`} data-preview>
-              {row.cover ? (
-                <CoverFill cover={coverUrl(row.cover)} position={row.coverPosition} />
+              {previewValue(row) ? (
+                <CoverFill cover={coverUrl(previewValue(row)!)} position={row.coverPosition} fit={imageFit} />
               ) : (
                 <div className="flex h-full items-center justify-center text-4xl text-neutral-300 dark:text-neutral-600">
                   {pageIcon(row.icon) ?? <FileText size={32} strokeWidth={1.5} />}
@@ -171,9 +187,11 @@ export function GalleryView(props: MoreViewProps) {
             </div>
           )}
           <div className={size === "small" ? "px-2.5 pt-2 pb-2.5" : "px-3 pt-2.5 pb-3"}>
-            <div className="line-clamp-2 font-medium leading-snug break-words">
-              <RowTitle row={row} />
-            </div>
+            {showName && (
+              <div className="line-clamp-2 font-medium leading-snug break-words">
+                <RowTitle row={row} />
+              </div>
+            )}
             <div className="mt-1.5 flex flex-col gap-1 empty:hidden">
               <RowValues {...props} row={row} className="-mx-2" />
             </div>

@@ -131,7 +131,7 @@ export function toRow(r: RowPage, properties: DatabaseProperty[]): DatabaseRow {
         values[p.id] = stored[p.id] ?? null;
     }
   }
-  return { id: r.id, title: r.title, icon: r.icon, values, cover: r.cover, coverPosition: r.coverPosition, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(), createdBy: r.createdBy };
+  return { id: r.id, title: r.title, icon: r.icon, values, cover: r.cover, firstImage: null, coverPosition: r.coverPosition, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(), createdBy: r.createdBy };
 }
 
 /** Names of the users referenced in person and "created by" cells. */
@@ -229,18 +229,20 @@ export function listRowTemplates(db: DbLike, databaseId: string): RowTemplate[] 
 
 /** Rows without a cover show the first image of their content on gallery cards. */
 function addImagePreviews(db: DbLike, rows: DatabaseRow[]) {
-  const missing = rows.filter((r) => !r.cover);
-  if (!missing.length) return;
+  if (!rows.length) return;
   const found = db
     .select({
       id: pages.id,
       src: sql<string | null>`(select j.value from json_tree(${pages.contentJson}) j where j.key = 'src' and j.type = 'text' and j.path like '%.attrs' limit 1)`,
     })
     .from(pages)
-    .where(inArray(pages.id, missing.map((r) => r.id)))
+    .where(inArray(pages.id, rows.map((r) => r.id)))
     .all();
   const byId = new Map(found.map((f) => [f.id, f.src]));
-  for (const r of missing) r.cover = byId.get(r.id) ?? null;
+  for (const r of rows) {
+    r.firstImage = byId.get(r.id) ?? null;
+    if (!r.cover) r.cover = r.firstImage ?? null;
+  }
 }
 
 /**

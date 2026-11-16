@@ -274,30 +274,73 @@ export function ViewBar({
       {menu?.kind === "props" && (
         <Popover anchor={menu.anchor} onClose={close} width={260}>
           {view.type === "gallery" && (
-            <label className={`${menuItem} cursor-pointer`}>
-              <input type="checkbox" className="accent-blue-600" checked={config.showPreview !== false} onChange={(e) => save({ showPreview: e.target.checked })} />
-              {t("view.showPreview")}
-            </label>
-          )}
-          {view.type === "gallery" && (
-            <div className="px-2 py-1.5">
-              <div className="mb-1 text-xs text-neutral-500">{t("view.cardSize")}</div>
-              <div className="flex rounded-md border border-neutral-200 p-0.5 dark:border-neutral-700" role="radiogroup" aria-label={t("view.cardSize")}>
-                {(["small", "medium", "large"] as const).map((size) => (
-                  <button
-                    key={size}
-                    role="radio"
-                    aria-checked={(config.cardSize ?? "medium") === size}
-                    onClick={() => save({ cardSize: size })}
-                    className={`flex-1 rounded px-2 py-1 text-xs ${
-                      (config.cardSize ?? "medium") === size
-                        ? "bg-neutral-100 font-medium text-neutral-900 dark:bg-neutral-700 dark:text-neutral-100"
-                        : "text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                    }`}
+            <div className="space-y-2 px-2 py-1.5">
+              <label className="block text-xs text-neutral-500">
+                {t("view.previewSource")}
+                <select
+                  className={`${control} mt-1 w-full`}
+                  value={config.galleryPreview ?? "cover"}
+                  onChange={(e) => save({ galleryPreview: e.target.value as ViewConfig["galleryPreview"] })}
+                >
+                  <option value="cover">{t("view.previewCover")}</option>
+                  <option value="content">{t("view.previewContent")}</option>
+                  <option value="files">{t("view.previewFiles")}</option>
+                  <option value="none">{t("view.previewNone")}</option>
+                </select>
+              </label>
+              {config.galleryPreview === "files" && (
+                <label className="block text-xs text-neutral-500">
+                  {t("view.previewFileProperty")}
+                  <select
+                    className={`${control} mt-1 w-full`}
+                    value={config.galleryPreviewPropertyId ?? ""}
+                    onChange={(e) => save({ galleryPreviewPropertyId: e.target.value || undefined })}
                   >
-                    {t(size === "small" ? "view.cardSmall" : size === "medium" ? "view.cardMedium" : "view.cardLarge")}
-                  </button>
-                ))}
+                    <option value="">{t("view.previewFirstFile")}</option>
+                    {data.properties
+                      .filter((p) => p.type === "file")
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
+              <label className="block text-xs text-neutral-500">
+                {t("view.imageFit")}
+                <select className={`${control} mt-1 w-full`} value={config.galleryImageFit ?? "crop"} onChange={(e) => save({ galleryImageFit: e.target.value as ViewConfig["galleryImageFit"] })}>
+                  <option value="crop">{t("view.imageCrop")}</option>
+                  <option value="fit">{t("view.imageFitInside")}</option>
+                </select>
+              </label>
+              <label className="block text-xs text-neutral-500">
+                {t("view.imageRatio")}
+                <select className={`${control} mt-1 w-full`} value={config.galleryImageRatio ?? "wide"} onChange={(e) => save({ galleryImageRatio: e.target.value as ViewConfig["galleryImageRatio"] })}>
+                  <option value="wide">{t("view.ratioWide")}</option>
+                  <option value="landscape">{t("view.ratioLandscape")}</option>
+                  <option value="square">{t("view.ratioSquare")}</option>
+                </select>
+              </label>
+              <label className={`${menuItem} cursor-pointer px-0`}>
+                <input type="checkbox" className="accent-blue-600" checked={config.galleryShowName !== false} onChange={(e) => save({ galleryShowName: e.target.checked })} />
+                {t("view.showName")}
+              </label>
+              <div>
+                <div className="mb-1 text-xs text-neutral-500">{t("view.cardSize")}</div>
+                <div className="flex rounded-md border border-neutral-200 p-0.5 dark:border-neutral-700" role="radiogroup" aria-label={t("view.cardSize")}>
+                  {(["small", "medium", "large"] as const).map((size) => (
+                    <button
+                      key={size}
+                      role="radio"
+                      aria-checked={(config.cardSize ?? "medium") === size}
+                      onClick={() => save({ cardSize: size })}
+                      className={`flex-1 rounded px-2 py-1 text-xs ${(config.cardSize ?? "medium") === size ? "bg-neutral-100 font-medium text-neutral-900 dark:bg-neutral-700 dark:text-neutral-100" : "text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800"}`}
+                    >
+                      {t(size === "small" ? "view.cardSmall" : size === "medium" ? "view.cardMedium" : "view.cardLarge")}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

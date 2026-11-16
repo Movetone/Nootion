@@ -238,8 +238,18 @@ export interface ViewConfig {
   calendarMode?: "month" | "week";
   /** Timeline: width of a day, from days to months. */
   timelineScale?: "day" | "week" | "month";
-  /** Gallery: shows the row's cover or first image at the top of its card (default true). */
+  /** Deprecated Gallery preview toggle kept for old saved views. */
   showPreview?: boolean;
+  /** Gallery: shows a preview image on the card (default cover, then first page image). */
+  galleryPreview?: "cover" | "content" | "files" | "none";
+  /** Gallery: file property used when galleryPreview is files. */
+  galleryPreviewPropertyId?: string;
+  /** Gallery: how preview images fit their card. */
+  galleryImageFit?: "crop" | "fit";
+  /** Gallery: preview aspect ratio. */
+  galleryImageRatio?: "wide" | "landscape" | "square";
+  /** Gallery: show the row name. */
+  galleryShowName?: boolean;
   /** Gallery: how wide the cards are (default medium); there are as many in a row as fit. */
   cardSize?: "small" | "medium" | "large";
 }
@@ -261,6 +271,11 @@ export const viewConfigSchema = z
     calendarMode: z.enum(["month", "week"]).optional(),
     timelineScale: z.enum(["day", "week", "month"]).optional(),
     showPreview: z.boolean().optional(),
+    galleryPreview: z.enum(["cover", "content", "files", "none"]).optional(),
+    galleryPreviewPropertyId: z.string().min(1).optional(),
+    galleryImageFit: z.enum(["crop", "fit"]).optional(),
+    galleryImageRatio: z.enum(["wide", "landscape", "square"]).optional(),
+    galleryShowName: z.boolean().optional(),
     cardSize: z.enum(["small", "medium", "large"]).optional(),
   })
   .passthrough();
@@ -279,8 +294,10 @@ export interface DatabaseRow {
   icon: string | null;
   /** Values by property id, computed properties included. */
   values: Record<string, CellValue>;
-  /** The row page's cover, or (for galleries) the first image of its content. */
+  /** The row page's cover. */
   cover: string | null;
+  /** First image found in the row page content, when a gallery view requests it. */
+  firstImage?: string | null;
   coverPosition: number;
   createdAt: string;
   updatedAt: string;
