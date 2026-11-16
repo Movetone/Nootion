@@ -631,6 +631,14 @@ export const databaseRoutes: FastifyPluginAsync = async (app) => {
       .where(and(eq(databaseViews.id, req.params.viewId), eq(databaseViews.databaseId, req.params.id)))
       .get();
     if (!view) throw notFound();
+    for (const key of ["subItemsPropertyId", "dependenciesPropertyId"] as const) {
+      const propertyId = input.config?.[key];
+      if (propertyId === undefined) continue;
+      const property = listProperties(db, req.params.id).find((p) => p.id === propertyId);
+      if (!property || property.type !== "relation" || property.config.databaseId !== req.params.id) {
+        throw new HttpError(400, "task_relation", "Sub-items and dependencies must use a self-relation property.");
+      }
+    }
     db.update(databaseViews)
       .set({
         ...(input.name ? { name: input.name } : {}),
