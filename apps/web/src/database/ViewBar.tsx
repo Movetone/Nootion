@@ -279,7 +279,7 @@ export function ViewBar({
                 {t("view.previewSource")}
                 <select
                   className={`${control} mt-1 w-full`}
-                  value={config.galleryPreview ?? "cover"}
+                  value={config.galleryPreview ?? (config.showPreview === false ? "none" : "cover")}
                   onChange={(e) => save({ galleryPreview: e.target.value as ViewConfig["galleryPreview"] })}
                 >
                   <option value="cover">{t("view.previewCover")}</option>
